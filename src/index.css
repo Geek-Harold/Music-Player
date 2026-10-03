@@ -19,3 +19,9 @@ body {
   background: var(--bg-cream);
   color: var(--ink);
 }
+
+/* subtle dotted texture from the mockup */
+.app {
+  background-image: radial-gradient(rgba(109, 68, 88, 0.25) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+}

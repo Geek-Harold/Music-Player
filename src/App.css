@@ -9,3 +9,11 @@
   padding: 24px;
   overflow-y: auto;
 }
+
+/* content scrolls, but no visible scrollbar (like the mockup) */
+.content {
+  scrollbar-width: none;           /* Firefox */
+}
+.content::-webkit-scrollbar {
+  display: none;                   /* Chrome, Edge */
+}

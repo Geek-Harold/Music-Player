@@ -1,5 +1,5 @@
 ﻿import "./Sidebar.css";
-import { Play, Compass, Heart, Sparkles, Settings } from "lucide-react";
+import { Play, Compass, Heart, Sparkles, Settings, Search } from "lucide-react";
 
 const playlists = [
   "Alternative Rock",
@@ -42,7 +42,7 @@ export default function Sidebar() {
       </ul>
       <a className="new-playlist">+ New playlist</a>
 
-      <input className="search" placeholder="Search..." />
+      <div className="search-wrap"><Search size={16} /><input className="search" placeholder="Search..." /></div>
 
       <div className="user">
         <span className="avatar">U</span> Username
