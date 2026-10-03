@@ -1,4 +1,5 @@
-import "./Sidebar.css";
+﻿import "./Sidebar.css";
+import { Play, Compass, Heart, Sparkles, Settings } from "lucide-react";
 
 const playlists = [
   "Alternative Rock",
@@ -9,6 +10,14 @@ const playlists = [
   "Daily Mix",
 ];
 
+const navItems = [
+  { icon: Play, label: "Now playing", active: true },
+  { icon: Compass, label: "Browse" },
+  { icon: Heart, label: "Collection" },
+  { icon: Sparkles, label: "Charts" },
+  { icon: Settings, label: "Settings" },
+];
+
 export default function Sidebar() {
   return (
     <aside className="sidebar">
@@ -17,11 +26,12 @@ export default function Sidebar() {
       </h1>
 
       <nav>
-        <a className="nav-item active">? Now playing</a>
-        <a className="nav-item">? Browse</a>
-        <a className="nav-item">? Collection</a>
-        <a className="nav-item">? Charts</a>
-        <a className="nav-item">? Settings</a>
+        {navItems.map(({ icon: Icon, label, active }) => (
+          <a key={label} className={`nav-item ${active ? "active" : ""}`}>
+            <Icon size={18} />
+            {label}
+          </a>
+        ))}
       </nav>
 
       <h2 className="section-title">Playlists</h2>

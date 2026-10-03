@@ -1,5 +1,6 @@
-import "./NowPlaying.css";
+﻿import "./NowPlaying.css";
 import { currentTrack, upNext } from "../data/tracks";
+import { Heart, SkipBack, Play, SkipForward, Ellipsis } from "lucide-react";
 
 export default function NowPlaying() {
   return (
@@ -7,7 +8,7 @@ export default function NowPlaying() {
       <div className="np-main">
         <div className="album-art">
           <span className="art-spine">IRON MAIDEN</span>
-          <div className="art-image">??</div>
+          <div className="art-image" />
         </div>
 
         <div className="np-info">
@@ -23,11 +24,11 @@ export default function NowPlaying() {
           </div>
 
           <div className="np-controls">
-            <button className="ctrl-btn like">?</button>
-            <button className="ctrl-btn">?</button>
-            <button className="play-btn">?</button>
-            <button className="ctrl-btn">?</button>
-            <button className="ctrl-btn">?</button>
+            <button className="ctrl-btn like"><Heart size={20} /></button>
+            <button className="ctrl-btn"><SkipBack size={20} /></button>
+            <button className="play-btn"><Play size={26} fill="currentColor" /></button>
+            <button className="ctrl-btn"><SkipForward size={20} /></button>
+            <button className="ctrl-btn"><Ellipsis size={20} /></button>
           </div>
 
           <span className="rpm-badge">{currentTrack.rpm}</span>

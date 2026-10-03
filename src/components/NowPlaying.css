@@ -167,3 +167,11 @@
   font-size: 13px;
   color: var(--mauve-dark);
 }
+
+.art-image::after {
+  content: "";
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,239,228,0.15) 30%, transparent 70%);
+}
