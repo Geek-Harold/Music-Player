@@ -1,0 +1,92 @@
+.sidebar {
+  background: linear-gradient(180deg, var(--mauve-dark), var(--plum));
+  color: #f5efe4;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  margin: 12px;
+}
+
+.logo {
+  font-family: 'Cinzel', serif;
+  font-size: 32px;
+  letter-spacing: 6px;
+  font-weight: 700;
+}
+.logo span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 3px;
+  opacity: 0.7;
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+nav {
+  margin: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-item {
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.nav-item:hover { background: rgba(255, 255, 255, 0.1); }
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.section-title {
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin: 16px 0 8px;
+}
+
+.sidebar ul {
+  list-style: none;
+  font-weight: 500;
+  line-height: 2;
+  cursor: pointer;
+}
+
+.new-playlist {
+  color: var(--accent-yellow);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.search {
+  margin-top: auto;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  background: var(--panel-cream);
+  color: var(--ink);
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  font-weight: 600;
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--mauve-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
