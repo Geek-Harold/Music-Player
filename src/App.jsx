@@ -1,6 +1,8 @@
-import "./App.css";
+﻿import "./App.css";
 import Sidebar from "./components/Sidebar";
 import NowPlaying from "./components/NowPlaying";
+import RecentlyPlayed from "./components/RecentlyPlayed";
+import Trending from "./components/Trending";
 
 export default function App() {
   return (
@@ -8,6 +10,8 @@ export default function App() {
       <Sidebar />
       <main className="content">
         <NowPlaying />
+        <RecentlyPlayed />
+        <Trending />
       </main>
     </div>
   );

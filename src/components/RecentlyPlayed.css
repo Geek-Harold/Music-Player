@@ -1,0 +1,41 @@
+﻿.section-heading {
+  font-size: 14px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+
+.recent-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.recent-card {
+  cursor: pointer;
+}
+
+.recent-art {
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background: linear-gradient(145deg, var(--mauve-mid), var(--plum));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Cinzel", serif;
+  font-size: 32px;
+  color: rgba(245, 239, 228, 0.6);
+  box-shadow: 3px 3px 0 rgba(61, 44, 58, 0.15);
+  transition: transform 0.15s;
+}
+.recent-card:hover .recent-art {
+  transform: translateY(-4px);
+}
+
+.recent-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 8px;
+  color: var(--ink);
+}
