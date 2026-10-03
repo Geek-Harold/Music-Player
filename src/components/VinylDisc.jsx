@@ -1,11 +1,12 @@
 ﻿import "./VinylDisc.css";
-import { currentTrack } from "../data/tracks";
 import { Volume2 } from "lucide-react";
 
-export default function VinylDisc() {
+export default function VinylDisc({ track, audio }) {
+  const { isPlaying, progress, formatTime } = audio;
+
   return (
     <div className="vinyl-panel">
-      <div className="vinyl">
+      <div className={`vinyl ${isPlaying ? "spinning" : ""}`}>
         <div className="vinyl-label">
           <div className="waveform">
             {[...Array(12)].map((_, i) => (
@@ -16,12 +17,19 @@ export default function VinylDisc() {
       </div>
 
       <div className="vinyl-time">
-        {currentTrack.currentTime} / {currentTrack.duration}
+        {formatTime((progress / 100) * (audio.audioRef.current?.duration || 0))} / {track.duration}
       </div>
 
       <div className="volume-control">
         <Volume2 size={16} />
-        <input type="range" min="0" max="100" defaultValue="70" />
+        <input
+          type="range" min="0" max="100" defaultValue="70"
+          onChange={(e) => {
+            if (audio.audioRef.current) {
+              audio.audioRef.current.volume = e.target.value / 100;
+            }
+          }}
+        />
       </div>
     </div>
   );

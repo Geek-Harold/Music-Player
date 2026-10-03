@@ -1,4 +1,4 @@
-.now-playing {
+﻿.now-playing {
   background: var(--panel-cream);
   border-radius: 20px;
   padding: 24px;
@@ -69,7 +69,6 @@
   overflow: hidden;
 }
 .progress-fill {
-  width: 46%;
   height: 100%;
   background: var(--mauve-mid);
   border-radius: 3px;

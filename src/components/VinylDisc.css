@@ -50,7 +50,7 @@
   align-items: center;
   justify-content: center;
   animation: spin 6s linear infinite;
-  animation-play-state: running;
+  animation-play-state: paused;
   box-shadow: 0 10px 40px rgba(46, 37, 48, 0.4);
   margin-right: -80px;
 }
@@ -111,4 +111,8 @@
   .vinyl-time {
     display: none;
   }
+}
+
+.vinyl.spinning {
+  animation-play-state: running;
 }

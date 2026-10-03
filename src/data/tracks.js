@@ -25,3 +25,38 @@ export const trending = [
   { rank: 3, title: "For Whom The Bell Tolls", artist: "Metallica" },
   { rank: 4, title: "Enjoy the Silence", artist: "Depeche Mode" },
 ];
+
+export const playlist = [
+  {
+    id: 1,
+    title: "Fear of the Dark",
+    artist: "Iron Maiden",
+    duration: "7:18",
+    rpm: "33 RPM",
+    src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+  },
+  {
+    id: 2,
+    title: "Enjoy the Silence",
+    artist: "Depeche Mode",
+    duration: "4:15",
+    rpm: "33 RPM",
+    src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+  },
+  {
+    id: 3,
+    title: "Night Crawler",
+    artist: "Judas Priest",
+    duration: "5:42",
+    rpm: "45 RPM",
+    src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+  },
+  {
+    id: 4,
+    title: "Zanzibar",
+    artist: "Billy Joel",
+    duration: "6:42",
+    rpm: "33 RPM",
+    src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+  },
+];
