@@ -11,7 +11,7 @@
 .vinyl-panel::before {
   content: "";
   position: absolute;
-  width: min(56vw, 740px);
+  width: min(44vw, 620px);
   aspect-ratio: 1;
   border-radius: 50%;
   border: 2px solid rgba(109, 68, 88, 0.4);
@@ -35,7 +35,7 @@
 }
 
 .vinyl {
-  width: min(48vw, 640px);
+  width: min(36vw, 520px);
   aspect-ratio: 1;
   border-radius: 50%;
   background:
@@ -103,4 +103,12 @@
 .volume-control input[type="range"] {
   width: 110px;
   accent-color: var(--mauve-mid);
+}
+
+/* keep the panel clean when hidden on narrow screens */
+@media (max-width: 1100px) {
+  .volume-control,
+  .vinyl-time {
+    display: none;
+  }
 }
