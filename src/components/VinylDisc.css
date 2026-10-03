@@ -1,0 +1,66 @@
+﻿.vinyl-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 24px;
+}
+
+/* the vinyl record */
+.vinyl {
+  width: min(42vw, 540px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #1e1720 18%, transparent 19%),
+    repeating-radial-gradient(
+      circle,
+      var(--vinyl) 0px,
+      var(--vinyl) 4px,
+      #241c27 5px
+    );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: spin 6s linear infinite;
+  animation-play-state: running;
+  box-shadow: 0 10px 40px rgba(46, 37, 48, 0.4);
+}
+
+.vinyl-label {
+  width: 38%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--mauve-light), var(--mauve-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* yellow waveform bars */
+.waveform {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.waveform span {
+  width: 6px;
+  border-radius: 3px;
+  background: var(--accent-yellow);
+}
+
+.vinyl-time {
+  position: absolute;
+  bottom: 32px;
+  right: 40px;
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14px;
+}
