@@ -1,4 +1,4 @@
-export const currentTrack = {
+﻿export const currentTrack = {
   title: "Fear of the Dark",
   artist: "Iron Maiden",
   currentTime: "3:21",
@@ -33,6 +33,7 @@ export const playlist = [
     artist: "Iron Maiden",
     duration: "7:18",
     rpm: "33 RPM",
+    cover: "https://picsum.photos/seed/sona1/300",
     src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
   },
   {
@@ -41,6 +42,7 @@ export const playlist = [
     artist: "Depeche Mode",
     duration: "4:15",
     rpm: "33 RPM",
+    cover: "https://picsum.photos/seed/sona2/300",
     src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
   },
   {
@@ -49,6 +51,7 @@ export const playlist = [
     artist: "Judas Priest",
     duration: "5:42",
     rpm: "45 RPM",
+    cover: "https://picsum.photos/seed/sona3/300",
     src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
   },
   {
@@ -57,6 +60,7 @@ export const playlist = [
     artist: "Billy Joel",
     duration: "6:42",
     rpm: "33 RPM",
+    cover: "https://picsum.photos/seed/sona4/300",
     src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
   },
 ];

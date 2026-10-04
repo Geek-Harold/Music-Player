@@ -7,7 +7,7 @@ export default function RecentlyPlayed({ tracks, onPlay }) {
       <div className="recent-grid">
         {tracks.map((album) => (
           <div key={album.id} className="recent-card" onClick={() => onPlay(album.id)}>
-            <div className="recent-art">{album.title[0]}</div>
+            <img className="recent-art" src={album.cover} alt={album.title} />
             <p className="recent-title">{album.title}</p>
           </div>
         ))}
@@ -15,3 +15,4 @@ export default function RecentlyPlayed({ tracks, onPlay }) {
     </section>
   );
 }
+

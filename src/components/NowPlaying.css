@@ -174,3 +174,19 @@
   border-radius: 50%;
   background: radial-gradient(circle, rgba(245,239,228,0.15) 30%, transparent 70%);
 }
+
+.art-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: sepia(0.4) hue-rotate(-30deg) saturate(0.8);
+}
+
+.up-next-thumb {
+  object-fit: cover;
+}
+
+.ctrl-btn.like.liked {
+  color: #c0392b;
+  background: rgba(192, 57, 43, 0.1);
+}

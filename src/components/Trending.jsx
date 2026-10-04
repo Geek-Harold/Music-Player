@@ -7,7 +7,7 @@ export default function Trending({ tracks, onPlay }) {
       <ul className="trending-list">
         {tracks.map((track, i) => (
           <li key={track.id} className="trending-row" onClick={() => onPlay(track.id)}>
-            <div className="trending-thumb">{track.artist[0]}</div>
+            <img className="trending-thumb" src={track.cover} alt="" />
             <span className="trending-title">
               {track.title} - {track.artist}
             </span>
@@ -18,3 +18,4 @@ export default function Trending({ tracks, onPlay }) {
     </section>
   );
 }
+

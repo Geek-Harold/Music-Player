@@ -31,3 +31,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.recent-art {
+  width: 100%;
+  object-fit: cover;
+  filter: sepia(0.4) hue-rotate(-30deg) saturate(0.8);
+}

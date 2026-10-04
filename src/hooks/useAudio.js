@@ -7,7 +7,7 @@ function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function useAudio(track) {
+export default function useAudio(track, onEnded) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0 - 100
@@ -42,7 +42,7 @@ export default function useAudio(track) {
       const a = audioRef.current;
       if (a && a.duration) setProgress((a.currentTime / a.duration) * 100);
     },
-    onEnded: () => setIsPlaying(false),
+    onEnded: () => { setIsPlaying(false); if (onEnded) onEnded(); },
   };
 
   return {
@@ -51,3 +51,7 @@ export default function useAudio(track) {
     formatTime,
   };
 }
+
+
+
+
