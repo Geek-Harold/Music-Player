@@ -1,57 +1,77 @@
-﻿import { useRef, useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-// formats raw seconds into m:ss
-function formatTime(seconds) {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+export function formatTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const minutes = Math.floor(seconds / 60);
+  const remainder = Math.floor(seconds % 60);
+  return `${minutes}:${remainder.toString().padStart(2, "0")}`;
 }
 
-export default function useAudio(track, onEnded) {
+export default function useAudio(track, onEnded, repeat = false) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0); // 0 - 100
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // when the track changes, load it and start playing
   useEffect(() => {
-    if (!audioRef.current || !track) return;
-    audioRef.current.src = track.src;
-    audioRef.current.play()
-      .then(() => setIsPlaying(true))
-      .catch(() => setIsPlaying(false));
+    const element = audioRef.current;
+    if (!element || !track) return;
+    setIsPlaying(false);
+    setProgress(0);
+    setDuration(0);
+    setError("");
+    setIsLoading(true);
+    element.src = track.src;
+    element.load();
+    element.play().catch(() => {
+      setIsPlaying(false);
+      setIsLoading(false);
+      setError("Playback could not start. Press play to try again.");
+    });
   }, [track]);
 
-  const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
+  const togglePlay = useCallback(() => {
+    const element = audioRef.current;
+    if (!element) return;
+    if (!element.paused) element.pause();
+    else {
+      setError("");
+      element.play().catch(() => setError("Playback could not start. Check the audio source and try again."));
     }
-  };
+  }, []);
 
-  const seek = (percent) => {
-    if (!audioRef.current || !audioRef.current.duration) return;
-    audioRef.current.currentTime = (percent / 100) * audioRef.current.duration;
-  };
+  const seek = useCallback((seconds) => {
+    const element = audioRef.current;
+    if (element && Number.isFinite(element.duration)) element.currentTime = Math.max(0, Math.min(seconds, element.duration));
+  }, []);
+  const restart = useCallback(() => {
+    const element = audioRef.current;
+    if (element) element.currentTime = 0;
+  }, []);
 
   const handlers = {
-    onTimeUpdate: () => {
-      const a = audioRef.current;
-      if (a && a.duration) setProgress((a.currentTime / a.duration) * 100);
+    onPlay: () => { setIsPlaying(true); setError(""); },
+    onPause: () => setIsPlaying(false),
+    onCanPlay: () => setIsLoading(false),
+    onWaiting: () => setIsLoading(true),
+    onTimeUpdate: (event) => {
+      const element = event.currentTarget;
+      if (Number.isFinite(element.duration) && element.duration > 0) {
+        setDuration(element.duration);
+        setProgress((element.currentTime / element.duration) * 100);
+      }
     },
-    onEnded: () => { setIsPlaying(false); if (onEnded) onEnded(); },
+    onLoadedMetadata: (event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0),
+    onEnded: () => {
+      if (repeat && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => setError("Playback could not restart."));
+      } else { setIsPlaying(false); onEnded?.(); }
+    },
+    onError: () => { setIsPlaying(false); setIsLoading(false); setError("This track could not be loaded."); },
   };
 
-  return {
-    audioRef, isPlaying, progress,
-    togglePlay, seek, handlers,
-    formatTime,
-  };
+  return { audioRef, isPlaying, isLoading, progress, duration, error, togglePlay, seek, restart, handlers, formatTime };
 }
-
-
-
-

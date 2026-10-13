@@ -1,27 +1,2 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Fredoka:wght@400;500;600&display=swap');
-
-:root {
-  --bg-cream: #f0e9de;
-  --panel-cream: #f5efe4;
-  --mauve-dark: #6d4458;
-  --mauve-mid: #8a5a6e;
-  --mauve-light: #b98a99;
-  --plum: #4a3348;
-  --ink: #3d2c3a;
-  --accent-yellow: #e8c46a;
-  --vinyl: #2e2530;
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: 'Fredoka', sans-serif;
-  background: var(--bg-cream);
-  color: var(--ink);
-}
-
-/* subtle dotted texture from the mockup */
-.app {
-  background-image: radial-gradient(rgba(109, 68, 88, 0.25) 1.5px, transparent 1.5px);
-  background-size: 28px 28px;
-}
+:root{font-family:'Fredoka',sans-serif;color:#3d2c3a;background:#f0e9de;font-synthesis:none;text-rendering:optimizeLegibility;font-smooth:always;--bg-cream:#f0e9de;--panel-cream:#f5efe4;--mauve-dark:#6d4458;--mauve-mid:#8a5a6e;--mauve-light:#b98a99;--plum:#4a3348;--ink:#3d2c3a;--accent-yellow:#e8c46a;--vinyl:#2e2530}*{margin:0;padding:0;box-sizing:border-box}html,body,#root{width:100%;height:100%;min-height:100%;margin:0}body{font-family:'Fredoka',sans-serif;background:var(--bg-cream);color:var(--ink)}button,input{font:inherit}button{color:inherit}button:focus-visible,input:focus-visible{outline:3px solid #d69e36;outline-offset:2px}img{display:block;max-width:100%}::selection{background:var(--mauve-light);color:white}

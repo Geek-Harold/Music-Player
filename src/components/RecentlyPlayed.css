@@ -37,3 +37,5 @@
   object-fit: cover;
   filter: sepia(0.4) hue-rotate(-30deg) saturate(0.8);
 }
+.recent-card{display:block;text-align:left;min-width:0;border:0;background:transparent;color:inherit;cursor:pointer}
+.recent-artist{display:block;font-size:11px;color:var(--mauve-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

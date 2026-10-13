@@ -19,6 +19,7 @@
   cursor: pointer;
   transition: background 0.15s;
 }
+.trending-play{display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:left;border:0;background:none;cursor:pointer;color:inherit}
 .trending-row:hover {
   background: rgba(109, 68, 88, 0.18);
 }
