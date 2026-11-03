@@ -10,9 +10,10 @@ import Trending from "./components/Trending";
 import PlayerBar from "./components/PlayerBar";
 import Settings from "./components/Settings";
 import useAudio from "./hooks/useAudio";
+import useMediaQuery from "./hooks/useMediaQuery";
 import { applyTheme, readTheme } from "./theme";
 import { playlist as sampleTracks } from "./data/tracks";
-import { ListMusic, Plus, Search, X, Disc3, Play, Shuffle } from "lucide-react";
+import { ListMusic, Plus, Search, X, Disc3, Play, Shuffle, Menu } from "lucide-react";
 
 const readSaved = (key, fallback) => {
   try { const value = JSON.parse(localStorage.getItem(key)); return value ?? fallback; }
@@ -105,6 +106,15 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   const [shuffleOrder, setShuffleOrder] = useState(() => session.shuffleOrder ?? shuffled(tracks.map((item) => item.id), session.currentId));
   const [showPlaylistSuggestions, setShowPlaylistSuggestions] = useState(false);
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
+  // Hamburger menu. On desktop it collapses the sidebar to an icon rail (remembered);
+  // on tablets and phones, where space is tight, it opens a slide-over drawer instead.
+  const isTablet = useMediaQuery("(max-width: 900px)");
+  const isPhone = useMediaQuery("(max-width: 680px)");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSaved("sona:sidebarCollapsed", false) === true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const sidebarVariant = isPhone ? "tabs" : isTablet || sidebarCollapsed ? "rail" : "full";
+  const showDrawer = drawerOpen && isTablet;
+  const toggleMenu = () => { if (isTablet) setDrawerOpen((open) => !open); else setSidebarCollapsed((value) => !value); };
   const [profile, setProfile] = useState(() => readSaved("sona:profile", { name: "Listener", color: "#b98a99", createdAt: new Date().toISOString() }));
   const [volume, setVolume] = useState(() => {
     const saved = Number(localStorage.getItem("sona:volume") ?? NaN);
@@ -127,6 +137,13 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   const changeVolume = (value) => { setVolume(value); if (value > 0) setMuted(false); };
   const heardVolume = muted ? 0 : volume;
   useEffect(() => { localStorage.setItem("sona:profile", JSON.stringify(profile)); }, [profile]);
+  useEffect(() => { localStorage.setItem("sona:sidebarCollapsed", JSON.stringify(sidebarCollapsed)); }, [sidebarCollapsed]);
+  useEffect(() => {
+    if (!showDrawer) return;
+    const onKey = (event) => { if (event.key === "Escape") setDrawerOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showDrawer]);
   useEffect(() => { localStorage.setItem("sona:shuffle", JSON.stringify(shuffle)); }, [shuffle]);
   useEffect(() => { localStorage.setItem("sona:repeat", JSON.stringify(repeat)); }, [repeat]);
   useEffect(() => {
@@ -291,10 +308,11 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   };
 
   return (
-    <div className={`app ${playerOpen ? "player-open" : ""}`}>
-      <Sidebar activeView={playerOpen || query.trim() ? null : activeView} activePlaylist={activePlaylist} playlists={customPlaylists} onNavigate={navigate} onOpenPlaylist={openPlaylist} onNewPlaylist={() => setCreatingPlaylist(true)} />
+    <div className={`app sidebar-is-${sidebarVariant} ${playerOpen ? "player-open" : ""}`}>
+      <Sidebar variant={sidebarVariant} activeView={playerOpen || query.trim() ? null : activeView} activePlaylist={activePlaylist} playlists={customPlaylists} onNavigate={navigate} onOpenPlaylist={openPlaylist} onNewPlaylist={() => setCreatingPlaylist(true)} onToggleMenu={toggleMenu} />
+      {showDrawer && <><button className="drawer-backdrop" aria-label="Close menu" tabIndex={-1} onClick={() => setDrawerOpen(false)} /><Sidebar variant="drawer" activeView={playerOpen || query.trim() ? null : activeView} activePlaylist={activePlaylist} playlists={customPlaylists} onNavigate={(view) => { setDrawerOpen(false); navigate(view); }} onOpenPlaylist={(id) => { setDrawerOpen(false); openPlaylist(id); }} onNewPlaylist={() => { setDrawerOpen(false); setCreatingPlaylist(true); }} onToggleMenu={() => setDrawerOpen(false)} /></>}
       <main className="content">
-        <div className="topbar"><button className="topbar-logo" onClick={() => navigate("Home")} aria-label="SONA home">SONA</button><label className="search-wrap"><Search size={18} /><input className="search" type="search" placeholder="Search songs or artists" value={query} onChange={(event) => { setQuery(event.target.value); setPlayerOpen(false); }} />{query && <button className="search-clear" aria-label="Clear search" onClick={() => setQuery("")}><X size={16} /></button>}</label><ProfileCard profile={profile} onSave={setProfile} stats={{ tracks: tracks.length, likes: likedIds.length, playlists: customPlaylists.length }} onNavigate={navigate} onSync={library.online ? onResync : null} syncing={syncing} /></div>
+        <div className="topbar"><button className="topbar-menu" onClick={toggleMenu} aria-label="Open menu" aria-expanded={showDrawer}><Menu size={22} /></button><button className="topbar-logo" onClick={() => navigate("Home")} aria-label="SONA home">SONA</button><label className="search-wrap"><Search size={18} /><input className="search" type="search" placeholder="Search songs or artists" value={query} onChange={(event) => { setQuery(event.target.value); setPlayerOpen(false); }} />{query && <button className="search-clear" aria-label="Clear search" onClick={() => setQuery("")}><X size={16} /></button>}</label><ProfileCard profile={profile} onSave={setProfile} stats={{ tracks: tracks.length, likes: likedIds.length, playlists: customPlaylists.length }} onNavigate={navigate} onSync={library.online ? onResync : null} syncing={syncing} /></div>
         <div className="view">{renderView()}</div>
       </main>
       <PlayerBar track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipBack={skipBack} onSkipForward={skipForward} shuffle={shuffle} repeat={repeat} onToggleShuffle={toggleShuffle} onToggleRepeat={cycleRepeat} volume={heardVolume} muted={muted} onToggleMute={toggleMute} onVolumeChange={changeVolume} expanded={playerOpen} onToggleExpanded={() => setPlayerOpen((value) => !value)} />
