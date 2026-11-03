@@ -1,16 +1,40 @@
-# React + Vite
+# SONA — Vinyl Music Player
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A vinyl-inspired music player built with React 19 and Vite.
 
-Currently, two official plugins are available:
+## Features
+- Real audio playback: play/pause, seek, next/previous, shuffle, repeat, volume
+- Spinning vinyl panel that follows playback
+- Up-next queue, liked-tracks collection, recently played history
+- Search by title or artist
+- Custom playlists
+- Settings: playback toggles, volume, clear saved data
+- Responsive layout for desktop, tablet and phone
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Likes, history, playlists and volume are saved in the browser's `localStorage`.
 
-## React Compiler
+## Getting started
+```bash
+npm install
+npm run dev
+```
+Then open the URL Vite prints (usually http://localhost:5173). If that port is taken, use `npx vite --port 5180`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Start the dev server with hot reload |
+| `npm run build` | Production build into `dist/` |
+| `npm run preview` | Serve the production build |
+| `npm run lint` | Run ESLint |
 
-## Expanding the ESLint configuration
+## Project structure
+```
+src/
+  App.jsx            app state: current track, queue, likes, playlists, views
+  components/        Sidebar, NowPlaying, RecentlyPlayed, Trending, VinylDisc, Settings
+  hooks/useAudio.js  wraps the <audio> element (play, seek, progress, errors)
+  data/tracks.js     track list (placeholder until the back end exists)
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Placeholder content
+The tracks in `src/data/tracks.js` use sample audio from SoundHelix and random covers from picsum.photos, so an internet connection is needed. They will be replaced once the back end serves real tracks.
