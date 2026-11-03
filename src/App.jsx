@@ -10,6 +10,7 @@ import Trending from "./components/Trending";
 import PlayerBar from "./components/PlayerBar";
 import Settings from "./components/Settings";
 import useAudio from "./hooks/useAudio";
+import { applyTheme, readTheme } from "./theme";
 import { playlist as sampleTracks } from "./data/tracks";
 import { ListMusic, Plus, Search, X, Disc3, Play, Shuffle } from "lucide-react";
 
@@ -44,6 +45,9 @@ const syncLibrary = async () => {
 export default function App() {
   const [library, setLibrary] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  // Light, dark or "system". Lives here so it also applies to the splash screen.
+  const [theme, setTheme] = useState(readTheme);
+  useEffect(() => { applyTheme(theme); }, [theme]);
   const resync = useCallback(async () => {
     setSyncing(true);
     try { setLibrary({ ...(await syncLibrary()), online: true }); }
@@ -62,10 +66,10 @@ export default function App() {
   }, []);
 
   if (!library) return <div className="splash" role="status"><Disc3 size={44} className="splash-disc" /><p className="splash-logo">SONA</p><p>Syncing your music…</p></div>;
-  return <MusicPlayer tracks={library.tracks.length ? library.tracks : sampleTracks} library={library} syncing={syncing} onResync={resync} onSaveFolders={saveFolders} />;
+  return <MusicPlayer tracks={library.tracks.length ? library.tracks : sampleTracks} library={library} syncing={syncing} onResync={resync} onSaveFolders={saveFolders} theme={theme} onThemeChange={setTheme} />;
 }
 
-function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
+function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme, onThemeChange }) {
   // Where you were last time (song, position, queue, page…), so a refresh picks up where you left off.
   const [session] = useState(() => {
     const saved = readSaved("sona:session", {}) ?? {};
@@ -112,6 +116,16 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
   useEffect(() => { localStorage.setItem("sona:recent", JSON.stringify(recentIds)); }, [recentIds]);
   useEffect(() => { localStorage.setItem("sona:playlists", JSON.stringify(customPlaylists)); }, [customPlaylists]);
   useEffect(() => { localStorage.setItem("sona:volume", String(volume / 100)); }, [volume]);
+  // Mute is separate from volume so unmuting brings back the level you had.
+  const [muted, setMuted] = useState(() => readSaved("sona:muted", false) === true);
+  useEffect(() => { localStorage.setItem("sona:muted", JSON.stringify(muted)); }, [muted]);
+  const toggleMute = () => {
+    // Unmuting at 0% would still be silent, so jump back to a usable level.
+    if (volume === 0) { setVolume(50); setMuted(false); }
+    else setMuted((value) => !value);
+  };
+  const changeVolume = (value) => { setVolume(value); if (value > 0) setMuted(false); };
+  const heardVolume = muted ? 0 : volume;
   useEffect(() => { localStorage.setItem("sona:profile", JSON.stringify(profile)); }, [profile]);
   useEffect(() => { localStorage.setItem("sona:shuffle", JSON.stringify(shuffle)); }, [shuffle]);
   useEffect(() => { localStorage.setItem("sona:repeat", JSON.stringify(repeat)); }, [repeat]);
@@ -171,6 +185,18 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
     else if (next) playTrack(next);
   }, repeat === "one", session.position);
   useEffect(() => { if (audioRef.current) audioRef.current.volume = volume / 100; }, [audioRef, volume]);
+  useEffect(() => { if (audioRef.current) audioRef.current.muted = muted; }, [audioRef, muted]);
+  // "M" mutes from anywhere, like YouTube, except while typing in a field.
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key.toLowerCase() !== "m" || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.target.closest?.("input, textarea, select, [contenteditable=true]")) return;
+      event.preventDefault();
+      toggleMute();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
   // Saved whenever any of it changes, and again as the page goes away so the
   // exact playback position survives a refresh or closing the tab.
   useEffect(() => {
@@ -257,7 +283,7 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
     if (activeView === "Home") return <>{heading(library.tracks.length ? `SONA · ${library.tracks.length} TRACKS${library.added ? ` · ${library.added} NEW` : ""}` : "SONA", `${greeting()}, ${profile.name}`)}{!library.tracks.length && <div className="library-notice"><p>{library.online ? "No music found in your folders, so you're hearing sample tracks." : "The library server isn't running, so you're hearing sample tracks. Start the app with npm run dev."}</p>{library.online && <button onClick={() => navigate("Settings")}>Choose folders</button>}</div>}<RecentlyPlayed title={recentTracks.length ? "Listen again" : "Start listening"} tracks={recentTracks.length ? recentTracks : tracks} onPlay={playFrom(recentTracks.length ? recentTracks : tracks, recentTracks.length ? "Listen again" : "Your library")} /><Trending title="Quick picks" tracks={tracks} onPlay={playFrom(tracks, "Quick picks")} onQueue={addToQueue} /></>;
     if (activeView === "Browse") return <>{heading("SONA LIBRARY", "Browse", tracks.length)}<Trending title="All tracks" tracks={tracks} onPlay={playFrom(tracks, "Your library")} onQueue={addToQueue} /></>;
     if (activeView === "Charts") return <>{heading("SONA LIBRARY", "Charts")}<Trending title="Top tracks" tracks={tracks} onPlay={playFrom(tracks, "Charts")} onQueue={addToQueue} ranked /></>;
-    if (activeView === "Settings") return <>{heading("SONA", "Settings")}<Settings library={library} syncing={syncing} onResync={onResync} onSaveFolders={onSaveFolders} shuffle={shuffle} repeat={repeat} onToggleShuffle={toggleShuffle} onSetRepeat={setRepeat} volume={volume} onVolumeChange={setVolume} counts={{ recent: recentIds.length, likes: likedIds.length, playlists: customPlaylists.length }} onClearHistory={() => setRecentIds([])} onClearLikes={() => setLikedIds([])} onClearPlaylists={() => { setCustomPlaylists([]); setActivePlaylist(null); }} /></>;
+    if (activeView === "Settings") return <>{heading("SONA", "Settings")}<Settings theme={theme} onThemeChange={onThemeChange} library={library} syncing={syncing} onResync={onResync} onSaveFolders={onSaveFolders} shuffle={shuffle} repeat={repeat} onToggleShuffle={toggleShuffle} onSetRepeat={setRepeat} volume={heardVolume} muted={muted} onToggleMute={toggleMute} onVolumeChange={changeVolume} counts={{ recent: recentIds.length, likes: likedIds.length, playlists: customPlaylists.length }} onClearHistory={() => setRecentIds([])} onClearLikes={() => setLikedIds([])} onClearPlaylists={() => { setCustomPlaylists([]); setActivePlaylist(null); }} /></>;
     if (activeView === "Collection") return <>{heading("SONA LIBRARY", "Collection")}<section className="shelf"><h3 className="section-heading">Playlists</h3><div className="playlist-grid"><button className="playlist-tile playlist-tile-new" onClick={() => setCreatingPlaylist(true)}><span className="playlist-new-art"><Plus size={36} /></span><strong>New playlist</strong><small>Name it, then pick songs</small></button>{customPlaylists.map((item) => { const count = playlistTracks(item).length; return <button className="playlist-tile" key={item.id} onClick={() => openPlaylist(item.id)}><PlaylistCover tracks={playlistTracks(item)} /><strong>{item.name}</strong><small>{count} {count === 1 ? "track" : "tracks"}</small></button>; })}</div></section><section className="shelf"><h3 className="section-heading">Liked tracks</h3>{trackList(viewTracks, "Liked tracks", "Nothing here yet", "Tap the heart on a playing track to save it here.")}</section></>;
     if (activeView === "Recently Played") return <>{heading("SONA LIBRARY", "Recently Played", viewTracks.length)}{trackList(viewTracks, "Recently played", "Nothing here yet", "Tracks you play will show up here.")}</>;
     const list = customPlaylists.find((item) => item.id === activePlaylist);
@@ -271,7 +297,7 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
         <div className="topbar"><button className="topbar-logo" onClick={() => navigate("Home")} aria-label="SONA home">SONA</button><label className="search-wrap"><Search size={18} /><input className="search" type="search" placeholder="Search songs or artists" value={query} onChange={(event) => { setQuery(event.target.value); setPlayerOpen(false); }} />{query && <button className="search-clear" aria-label="Clear search" onClick={() => setQuery("")}><X size={16} /></button>}</label><ProfileCard profile={profile} onSave={setProfile} stats={{ tracks: tracks.length, likes: likedIds.length, playlists: customPlaylists.length }} onNavigate={navigate} onSync={library.online ? onResync : null} syncing={syncing} /></div>
         <div className="view">{renderView()}</div>
       </main>
-      <PlayerBar track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipBack={skipBack} onSkipForward={skipForward} shuffle={shuffle} repeat={repeat} onToggleShuffle={toggleShuffle} onToggleRepeat={cycleRepeat} volume={volume} onVolumeChange={setVolume} expanded={playerOpen} onToggleExpanded={() => setPlayerOpen((value) => !value)} />
+      <PlayerBar track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipBack={skipBack} onSkipForward={skipForward} shuffle={shuffle} repeat={repeat} onToggleShuffle={toggleShuffle} onToggleRepeat={cycleRepeat} volume={heardVolume} muted={muted} onToggleMute={toggleMute} onVolumeChange={changeVolume} expanded={playerOpen} onToggleExpanded={() => setPlayerOpen((value) => !value)} />
       <audio ref={audioRef} {...audio.handlers} preload="metadata" />
       {creatingPlaylist && <PlaylistDialog tracks={tracks} existingNames={customPlaylists.map((item) => item.name)} onCreate={createPlaylist} onClose={() => setCreatingPlaylist(false)} />}
     </div>

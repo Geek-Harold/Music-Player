@@ -12,6 +12,8 @@ A vinyl-inspired music player for the music on your own computer, built with Rea
 - Custom playlists
 - Settings: music folders, sync now, playback toggles, volume, clear saved data
 - Responsive layout for desktop, tablet and phone
+- Light, dark or system theme (Settings → Appearance)
+- Profile with name, colour and an optional profile picture
 
 Likes, history, playlists, your profile, volume, shuffle/repeat and your listening session (current song and position, queue, open page) are saved in the browser's `localStorage`, so a refresh brings you back to where you were, paused at the same spot.
 

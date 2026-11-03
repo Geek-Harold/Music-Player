@@ -1,10 +1,16 @@
 import { useState } from "react";
 import "./Settings.css";
-import { Shuffle, Repeat, Volume2, VolumeX, Trash2, RefreshCw, Folder, FolderX, Plus, X } from "lucide-react";
+import { useSystemDark } from "../theme";
+import { Shuffle, Repeat, Volume2, VolumeX, Trash2, RefreshCw, Folder, FolderX, Plus, X, Sun, Moon, Monitor } from "lucide-react";
 
-export default function Settings({ library, syncing, onResync, onSaveFolders, shuffle, repeat, onToggleShuffle, onSetRepeat, volume, onVolumeChange, counts, onClearHistory, onClearLikes, onClearPlaylists }) {
+const THEME_OPTIONS = [["light", "Light", Sun], ["dark", "Dark", Moon], ["system", "System", Monitor]];
+
+export default function Settings({ theme, onThemeChange, library, syncing, onResync, onSaveFolders, shuffle, repeat, onToggleShuffle, onSetRepeat, volume, muted, onToggleMute, onVolumeChange, counts, onClearHistory, onClearLikes, onClearPlaylists }) {
   const [newFolder, setNewFolder] = useState("");
   const [folderError, setFolderError] = useState("");
+  const systemDark = useSystemDark();
+  const ThemeIcon = theme === "system" ? Monitor : theme === "dark" ? Moon : Sun;
+  const themeNote = { light: "Always light", dark: "Always dark", system: `Matches your device (${systemDark ? "dark" : "light"} right now)` }[theme];
   const confirmThen = (message, action) => () => { if (window.confirm(message)) action(); };
   const folders = library.folders ?? [];
   const saveFolders = async (paths) => {
@@ -34,10 +40,13 @@ export default function Settings({ library, syncing, onResync, onSaveFolders, sh
           {folderError && <p className="folder-error" role="alert">{folderError}</p>}
         </>}
       </section>
+      <section className="settings-card"><h2>Appearance</h2>
+        <div className="settings-row"><span className="settings-label"><ThemeIcon size={18} /><span><strong>Theme</strong><small>{themeNote}</small></span></span><div className="segmented" role="radiogroup" aria-label="Theme">{THEME_OPTIONS.map(([value, label, Icon]) => <button key={value} role="radio" aria-checked={theme === value} className={theme === value ? "on" : ""} onClick={() => onThemeChange(value)}><Icon size={14} />{label}</button>)}</div></div>
+      </section>
       <section className="settings-card"><h2>Playback</h2>
         <div className="settings-row"><span className="settings-label"><Shuffle size={18} /><span><strong>Shuffle</strong><small>Play the current list in a random order, each song once per lap</small></span></span><button className={`switch ${shuffle ? "on" : ""}`} role="switch" aria-checked={shuffle} aria-label="Shuffle" onClick={onToggleShuffle}><span /></button></div>
         <div className="settings-row"><span className="settings-label"><Repeat size={18} /><span><strong>Repeat</strong><small>{{ off: "Stop after the last song in the list", all: "Start the list again after the last song", one: "Keep playing the current song" }[repeat]}</small></span></span><div className="segmented" role="radiogroup" aria-label="Repeat">{[["off", "Off"], ["all", "All"], ["one", "One"]].map(([mode, label]) => <button key={mode} role="radio" aria-checked={repeat === mode} className={repeat === mode ? "on" : ""} onClick={() => onSetRepeat(mode)}>{label}</button>)}</div></div>
-        <div className="settings-row"><span className="settings-label">{volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}<span><strong>Volume</strong><small>{volume}%</small></span></span><input className="settings-volume" type="range" min="0" max="100" value={volume} aria-label="Volume" onChange={(event) => onVolumeChange(Number(event.target.value))} /></div>
+        <div className="settings-row"><span className="settings-label"><button className={`icon-button settings-mute ${muted ? "muted" : ""}`} onClick={onToggleMute} aria-label={volume === 0 ? "Unmute" : "Mute"} aria-pressed={muted} title={`${volume === 0 ? "Unmute" : "Mute"} (M)`}>{volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}</button><span><strong>Volume</strong><small>{muted ? "Muted · press M or the speaker to unmute" : `${volume}%`}</small></span></span><input className="settings-volume" type="range" min="0" max="100" value={volume} aria-label="Volume" onChange={(event) => onVolumeChange(Number(event.target.value))} /></div>
       </section>
       <section className="settings-card"><h2>Library data</h2><p className="muted">Stored in this browser only.</p>
         {resets.map((item) => <div className="settings-row" key={item.label}><span className="settings-label"><span><strong>{item.label}</strong><small>{item.detail}</small></span></span><button className="settings-danger" disabled={item.disabled} onClick={item.onClick}><Trash2 size={15} /> Clear</button></div>)}
