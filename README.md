@@ -1,14 +1,16 @@
 # SONA — Vinyl Music Player
 
-A vinyl-inspired music player built with React 19 and Vite.
+A vinyl-inspired music player for the music on your own computer, built with React 19, Vite and a small Express server.
 
 ## Features
+- **Library sync:** every time the app opens it scans your music folders and picks up new, changed and deleted files
+- Reads tags and embedded album art (MP3, M4A/AAC, FLAC, WAV, OGG, Opus)
 - Real audio playback: play/pause, seek, next/previous, shuffle, repeat, volume
-- Spinning vinyl panel that follows playback
+- YouTube Music–style layout: bottom player bar, expanded vinyl player with an Up next list, shelf-based Home
 - Up-next queue, liked-tracks collection, recently played history
 - Search by title or artist
 - Custom playlists
-- Settings: playback toggles, volume, clear saved data
+- Settings: music folders, sync now, playback toggles, volume, clear saved data
 - Responsive layout for desktop, tablet and phone
 
 Likes, history, playlists and volume are saved in the browser's `localStorage`.
@@ -18,23 +20,33 @@ Likes, history, playlists and volume are saved in the browser's `localStorage`.
 npm install
 npm run dev
 ```
-Then open the URL Vite prints (usually http://localhost:5173). If that port is taken, use `npx vite --port 5180`.
+Then open http://localhost:5180. `npm run dev` starts two things side by side:
+- **web**: the Vite dev server on port 5180
+- **api**: the library server on port 5181 (Vite forwards `/api` requests to it)
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` | Start the dev server with hot reload |
+| `npm run dev` | Start the app and the library server with auto-reload |
+| `npm start` | Build the app and serve everything from the library server on http://localhost:5181 |
+| `npm run server` | Run only the library server |
 | `npm run build` | Production build into `dist/` |
-| `npm run preview` | Serve the production build |
 | `npm run lint` | Run ESLint |
+
+## Music folders
+By default SONA scans `Music`, `Downloads` and `OneDrive\Music` in your user folder, including every folder inside them. You can add or remove folders under **Settings → Music folders**.
+
+The first scan reads each file's tags. After that, results are cached in `server/data/library.json`, so a re-sync only reads files that are new or changed. Folder choices are saved in `server/data/settings.json`. Both files are git-ignored. Delete them to start fresh.
+
+If no music is found, or the library server isn't running, the app falls back to a few sample tracks (these need an internet connection).
 
 ## Project structure
 ```
+server/
+  index.js           Express API: /api/sync, /api/folders, track audio + cover art
+  library.js         folder scanning, tag reading, cache
 src/
-  App.jsx            app state: current track, queue, likes, playlists, views
-  components/        Sidebar, NowPlaying, RecentlyPlayed, Trending, VinylDisc, Settings
+  App.jsx            syncs the library on open, then app state: current track, queue, likes, playlists, views
+  components/        Sidebar, PlayerBar, NowPlaying, RecentlyPlayed, Trending, VinylDisc, Settings
   hooks/useAudio.js  wraps the <audio> element (play, seek, progress, errors)
-  data/tracks.js     track list (placeholder until the back end exists)
+  data/tracks.js     sample tracks used when no local music is found
 ```
-
-## Placeholder content
-The tracks in `src/data/tracks.js` use sample audio from SoundHelix and random covers from picsum.photos, so an internet connection is needed. They will be replaced once the back end serves real tracks.

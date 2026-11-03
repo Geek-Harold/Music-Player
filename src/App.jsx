@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import Sidebar, { NewPlaylist } from "./components/Sidebar";
 import NowPlaying from "./components/NowPlaying";
@@ -7,8 +7,8 @@ import Trending from "./components/Trending";
 import PlayerBar from "./components/PlayerBar";
 import Settings from "./components/Settings";
 import useAudio from "./hooks/useAudio";
-import { playlist as tracks } from "./data/tracks";
-import { ListMusic, Plus, Search, X } from "lucide-react";
+import { playlist as sampleTracks } from "./data/tracks";
+import { ListMusic, Plus, Search, X, Disc3 } from "lucide-react";
 
 const readSaved = (key, fallback) => {
   try { const value = JSON.parse(localStorage.getItem(key)); return value ?? fallback; }
@@ -19,7 +19,39 @@ const greeting = () => {
   return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 };
 
+const syncLibrary = async () => {
+  const response = await fetch("/api/sync", { method: "POST" });
+  if (!response.ok) throw new Error(`Sync failed (${response.status})`);
+  return response.json();
+};
+
+// Syncs the local music folders every time the app opens, then hands the
+// result to the player. Falls back to the sample tracks if nothing is found.
 export default function App() {
+  const [library, setLibrary] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const resync = useCallback(async () => {
+    setSyncing(true);
+    try { setLibrary({ ...(await syncLibrary()), online: true }); }
+    catch { setLibrary((current) => current ?? { tracks: [], folders: [], online: false }); }
+    finally { setSyncing(false); }
+  }, []);
+  const saveFolders = useCallback(async (folders) => {
+    const response = await fetch("/api/folders", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folders }) });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error ?? "Could not save folders.");
+    await resync();
+  }, [resync]);
+  useEffect(() => {
+    let cancelled = false;
+    syncLibrary().then((result) => { if (!cancelled) setLibrary({ ...result, online: true }); }, () => { if (!cancelled) setLibrary({ tracks: [], folders: [], online: false }); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!library) return <div className="splash" role="status"><Disc3 size={44} className="splash-disc" /><p className="splash-logo">SONA</p><p>Syncing your music…</p></div>;
+  return <MusicPlayer tracks={library.tracks.length ? library.tracks : sampleTracks} library={library} syncing={syncing} onResync={resync} onSaveFolders={saveFolders} />;
+}
+
+function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
   const [currentId, setCurrentId] = useState(tracks[0].id);
   const [likedIds, setLikedIds] = useState(() => readSaved("sona:likes", []));
   const [recentIds, setRecentIds] = useState(() => readSaved("sona:recent", []));
@@ -99,7 +131,7 @@ export default function App() {
     if (activeView === "Recently Played") return recentIds.map((id) => tracks.find((item) => item.id === id)).filter(Boolean);
     if (activeView === "Playlist") return tracks.filter((item) => customPlaylists.find((list) => list.id === activePlaylist)?.trackIds.includes(item.id));
     return tracks;
-  }, [activeView, activePlaylist, customPlaylists, likedIds, query, recentIds]);
+  }, [activeView, activePlaylist, customPlaylists, likedIds, query, recentIds, tracks]);
   const currentIndex = tracks.findIndex((item) => item.id === currentId);
   const comingUp = Array.from({ length: tracks.length - 1 }, (_, offset) => tracks[(currentIndex + offset + 1) % tracks.length]);
   const heading = (eyebrow, title, count) => <header className="view-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1></div>{count !== undefined && <span className="track-count">{count} {count === 1 ? "track" : "tracks"}</span>}</header>;
@@ -108,10 +140,10 @@ export default function App() {
   const renderView = () => {
     if (playerOpen) return <NowPlaying track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipForward={skipForward} onSkipBack={skipBack} onToggleShuffle={() => setShuffle((value) => !value)} onToggleRepeat={() => setRepeat((value) => !value)} shuffle={shuffle} repeat={repeat} queueTracks={queue.map((id, index) => ({ item: tracks.find((song) => song.id === id), index })).filter(({ item }) => item)} comingUp={comingUp} onPlay={pickTrack} onRemoveFromQueue={(index) => setQueue((items) => items.filter((_, i) => i !== index))} onClose={() => setPlayerOpen(false)} />;
     if (query.trim()) return <>{heading("SEARCH", `Results for “${query.trim()}”`, viewTracks.length)}{trackList(viewTracks, "No matching tracks", "Try another title or artist.")}</>;
-    if (activeView === "Home") return <>{heading("SONA", greeting())}<RecentlyPlayed title={recentTracks.length ? "Listen again" : "Start listening"} tracks={recentTracks.length ? recentTracks : tracks} onPlay={pickTrack} /><Trending title="Quick picks" tracks={tracks} onPlay={pickTrack} onQueue={addToQueue} /></>;
+    if (activeView === "Home") return <>{heading(library.tracks.length ? `SONA · ${library.tracks.length} TRACKS${library.added ? ` · ${library.added} NEW` : ""}` : "SONA", greeting())}{!library.tracks.length && <div className="library-notice"><p>{library.online ? "No music found in your folders, so you're hearing sample tracks." : "The library server isn't running, so you're hearing sample tracks. Start the app with npm run dev."}</p>{library.online && <button onClick={() => navigate("Settings")}>Choose folders</button>}</div>}<RecentlyPlayed title={recentTracks.length ? "Listen again" : "Start listening"} tracks={recentTracks.length ? recentTracks : tracks} onPlay={pickTrack} /><Trending title="Quick picks" tracks={tracks} onPlay={pickTrack} onQueue={addToQueue} /></>;
     if (activeView === "Browse") return <>{heading("SONA LIBRARY", "Browse", tracks.length)}<Trending title="All tracks" tracks={tracks} onPlay={pickTrack} onQueue={addToQueue} /></>;
     if (activeView === "Charts") return <>{heading("SONA LIBRARY", "Charts")}<Trending title="Top tracks" tracks={tracks} onPlay={pickTrack} onQueue={addToQueue} ranked /></>;
-    if (activeView === "Settings") return <>{heading("SONA", "Settings")}<Settings shuffle={shuffle} repeat={repeat} onToggleShuffle={() => setShuffle((value) => !value)} onToggleRepeat={() => setRepeat((value) => !value)} volume={volume} onVolumeChange={setVolume} counts={{ recent: recentIds.length, likes: likedIds.length, playlists: customPlaylists.length }} onClearHistory={() => setRecentIds([])} onClearLikes={() => setLikedIds([])} onClearPlaylists={() => { setCustomPlaylists([]); setActivePlaylist(null); }} /></>;
+    if (activeView === "Settings") return <>{heading("SONA", "Settings")}<Settings library={library} syncing={syncing} onResync={onResync} onSaveFolders={onSaveFolders} shuffle={shuffle} repeat={repeat} onToggleShuffle={() => setShuffle((value) => !value)} onToggleRepeat={() => setRepeat((value) => !value)} volume={volume} onVolumeChange={setVolume} counts={{ recent: recentIds.length, likes: likedIds.length, playlists: customPlaylists.length }} onClearHistory={() => setRecentIds([])} onClearLikes={() => setLikedIds([])} onClearPlaylists={() => { setCustomPlaylists([]); setActivePlaylist(null); }} /></>;
     if (activeView === "Collection") return <>{heading("SONA LIBRARY", "Collection")}<section className="shelf"><h3 className="section-heading">Playlists</h3><div className="chip-row">{customPlaylists.map((item) => <button className="chip" key={item.id} onClick={() => openPlaylist(item.id)}><ListMusic size={15} />{item.name}<small>{item.trackIds.length}</small></button>)}<NewPlaylist className="chip-new" onCreate={createPlaylist} /></div></section><section className="shelf"><h3 className="section-heading">Liked tracks</h3>{trackList(viewTracks, "Nothing here yet", "Tap the heart on a playing track to save it here.")}</section></>;
     if (activeView === "Recently Played") return <>{heading("SONA LIBRARY", "Recently Played", viewTracks.length)}{trackList(viewTracks, "Nothing here yet", "Tracks you play will show up here.")}</>;
     const list = customPlaylists.find((item) => item.id === activePlaylist);

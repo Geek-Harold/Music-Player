@@ -5,6 +5,10 @@ All notable changes to SONA. Format loosely follows Keep a Changelog.
 ## [Unreleased]
 
 ### Added
+- Local library sync: an Express server (`server/`) scans music folders each time the app opens, reads tags and cover art with music-metadata, caches results so re-syncs only read new or changed files, and streams audio with seeking support
+- Settings → Music folders: see track count and last sync, "Sync now", add or remove folders (defaults: Music, Downloads, OneDrive\Music)
+- Startup splash while syncing; sample tracks are used only when no local music is found or the server isn't running
+- `npm run dev` now runs the web app (port 5180) and library server (port 5181) together; `npm start` builds and serves everything from the server
 - Vite + React project setup
 - App layout: 3-column responsive grid (sidebar / content / vinyl)
 - Sidebar with nav, playlists, search, user section

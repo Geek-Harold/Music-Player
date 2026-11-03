@@ -16,19 +16,22 @@ export default function useAudio(track, onEnded, repeat = false) {
   const [isLoading, setIsLoading] = useState(false);
   // Browsers block (and users dislike) sound on page load, so the first track
   // only loads; anything picked after that starts playing straight away.
-  const initialTrack = useRef(track);
+  // Keyed on the file, not the track object: a library re-sync hands us fresh
+  // objects for the same songs, and that must not restart playback.
+  const src = track?.src;
+  const initialSrc = useRef(src);
   const startedRef = useRef(false);
 
   useEffect(() => {
     const element = audioRef.current;
-    if (!element || !track) return;
+    if (!element || !src) return;
     setIsPlaying(false);
     setProgress(0);
     setDuration(0);
     setError("");
-    element.src = track.src;
+    element.src = src;
     element.load();
-    if (!startedRef.current && track === initialTrack.current) {
+    if (!startedRef.current && src === initialSrc.current) {
       setIsLoading(false);
       return;
     }
@@ -39,7 +42,7 @@ export default function useAudio(track, onEnded, repeat = false) {
       setIsLoading(false);
       setError("Playback could not start. Press play to try again.");
     });
-  }, [track]);
+  }, [src]);
 
   const play = useCallback(() => {
     const element = audioRef.current;
