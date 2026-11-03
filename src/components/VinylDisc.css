@@ -1,41 +1,5 @@
-﻿.vinyl-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-/* thin decorative arc around the record (tonearm path) */
-.vinyl-panel::before {
-  content: "";
-  position: absolute;
-  width: min(44vw, 620px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  border: 2px solid rgba(109, 68, 88, 0.4);
-  border-top-color: transparent;
-  border-right-color: transparent;
-  transform: rotate(45deg);
-  pointer-events: none;
-}
-
-/* the dot on the arc */
-.vinyl-panel::after {
-  content: "";
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--mauve-dark);
-  left: 8%;
-  top: 38%;
-  pointer-events: none;
-}
-
 .vinyl {
-  width: min(36vw, 520px);
+  width: 100%;
   aspect-ratio: 1;
   border-radius: 50%;
   background:
@@ -52,7 +16,6 @@
   animation: spin 6s linear infinite;
   animation-play-state: paused;
   box-shadow: 0 10px 40px rgba(46, 37, 48, 0.4);
-  margin-right: -80px;
 }
 
 .vinyl-label {
@@ -73,46 +36,23 @@
 
 .waveform {
   display: flex;
-  gap: 5px;
+  gap: 4%;
   align-items: center;
+  width: 64%;
+  height: 56%;
 }
 .waveform span {
-  width: 6px;
+  flex: 1;
   border-radius: 3px;
   background: var(--accent-yellow);
 }
 
-.vinyl-time {
-  position: absolute;
-  bottom: 32px;
-  right: 40px;
-  font-weight: 600;
-  color: var(--ink);
-  font-size: 14px;
-}
-
-.volume-control {
-  position: absolute;
-  bottom: 28px;
-  left: 32px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--mauve-dark);
-}
-.volume-control input[type="range"] {
-  width: 110px;
-  accent-color: var(--mauve-mid);
-}
-
-/* keep the panel clean when hidden on narrow screens */
-@media (max-width: 1100px) {
-  .volume-control,
-  .vinyl-time {
-    display: none;
-  }
-}
-
 .vinyl.spinning {
   animation-play-state: running;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vinyl.spinning {
+    animation-play-state: paused;
+  }
 }
