@@ -5,6 +5,9 @@ All notable changes to SONA. Format loosely follows Keep a Changelog.
 ## [Unreleased]
 
 ### Added
+- Profile card: the top-bar avatar opens a card with your name, colour, "listening since" date, track/liked/playlist counts and shortcuts (collection, history, settings, sync). Name and colour are editable and saved in the browser; Home greets you by name
+- New playlist dialog: title, optional description, and a searchable song picker with a live cover mosaic; checks for empty and duplicate names
+- Collection shows playlists as a grid of cover tiles with a "New playlist" tile; playlist pages get a cover, description and a Play button that queues the whole playlist
 - Local library sync: an Express server (`server/`) scans music folders each time the app opens, reads tags and cover art with music-metadata, caches results so re-syncs only read new or changed files, and streams audio with seeking support
 - Settings → Music folders: see track count and last sync, "Sync now", add or remove folders (defaults: Music, Downloads, OneDrive\Music)
 - Startup splash while syncing; sample tracks are used only when no local music is found or the server isn't running

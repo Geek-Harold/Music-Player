@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
-import Sidebar, { NewPlaylist } from "./components/Sidebar";
+import Sidebar from "./components/Sidebar";
+import ProfileCard from "./components/ProfileCard";
+import PlaylistCover from "./components/PlaylistCover";
+import PlaylistDialog from "./components/PlaylistDialog";
 import NowPlaying from "./components/NowPlaying";
 import RecentlyPlayed from "./components/RecentlyPlayed";
 import Trending from "./components/Trending";
@@ -8,7 +11,7 @@ import PlayerBar from "./components/PlayerBar";
 import Settings from "./components/Settings";
 import useAudio from "./hooks/useAudio";
 import { playlist as sampleTracks } from "./data/tracks";
-import { ListMusic, Plus, Search, X, Disc3 } from "lucide-react";
+import { ListMusic, Plus, Search, X, Disc3, Play } from "lucide-react";
 
 const readSaved = (key, fallback) => {
   try { const value = JSON.parse(localStorage.getItem(key)); return value ?? fallback; }
@@ -64,6 +67,8 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState(false);
   const [showPlaylistSuggestions, setShowPlaylistSuggestions] = useState(false);
+  const [creatingPlaylist, setCreatingPlaylist] = useState(false);
+  const [profile, setProfile] = useState(() => readSaved("sona:profile", { name: "Listener", color: "#b98a99", createdAt: new Date().toISOString() }));
   const [volume, setVolume] = useState(() => {
     const saved = Number(localStorage.getItem("sona:volume") ?? NaN);
     return Number.isFinite(saved) && saved >= 0 && saved <= 1 ? Math.round(saved * 100) : 70;
@@ -74,6 +79,7 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
   useEffect(() => { localStorage.setItem("sona:recent", JSON.stringify(recentIds)); }, [recentIds]);
   useEffect(() => { localStorage.setItem("sona:playlists", JSON.stringify(customPlaylists)); }, [customPlaylists]);
   useEffect(() => { localStorage.setItem("sona:volume", String(volume / 100)); }, [volume]);
+  useEffect(() => { localStorage.setItem("sona:profile", JSON.stringify(profile)); }, [profile]);
   useEffect(() => {
     if (!playerOpen) return;
     const onKey = (event) => { if (event.key === "Escape") setPlayerOpen(false); };
@@ -112,12 +118,17 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
   const addToQueue = (id) => setQueue((items) => [...items, id]);
   const navigate = (view) => { setQuery(""); setActivePlaylist(null); setPlayerOpen(false); setActiveView(view); };
   const openPlaylist = (id) => { setQuery(""); setPlayerOpen(false); setActivePlaylist(id); setActiveView("Playlist"); };
-  const createPlaylist = (name) => {
-    const cleanName = name.trim();
-    if (!cleanName || customPlaylists.some((item) => item.name.toLowerCase() === cleanName.toLowerCase())) return;
-    const created = { id: `playlist-${Date.now()}`, name: cleanName, trackIds: [] };
+  const createPlaylist = ({ name, description, trackIds }) => {
+    const created = { id: `playlist-${Date.now()}`, name, description, trackIds, createdAt: new Date().toISOString() };
     setCustomPlaylists((items) => [...items, created]);
+    setCreatingPlaylist(false);
     openPlaylist(created.id);
+  };
+  const playlistTracks = (list) => list.trackIds.map((id) => tracks.find((item) => item.id === id)).filter(Boolean);
+  const playAll = (list) => {
+    if (!list.length) return;
+    pickTrack(list[0].id);
+    setQueue(list.slice(1).map((item) => item.id));
   };
   const addToPlaylist = (playlistId, id) => setCustomPlaylists((items) => items.map((item) => item.id === playlistId && !item.trackIds.includes(id) ? { ...item, trackIds: [...item.trackIds, id] } : item));
   const removeFromPlaylist = (playlistId, id) => setCustomPlaylists((items) => items.map((item) => item.id === playlistId ? { ...item, trackIds: item.trackIds.filter((trackId) => trackId !== id) } : item));
@@ -129,7 +140,7 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
     }
     if (activeView === "Collection") return tracks.filter((item) => likedIds.includes(item.id));
     if (activeView === "Recently Played") return recentIds.map((id) => tracks.find((item) => item.id === id)).filter(Boolean);
-    if (activeView === "Playlist") return tracks.filter((item) => customPlaylists.find((list) => list.id === activePlaylist)?.trackIds.includes(item.id));
+    if (activeView === "Playlist") return (customPlaylists.find((list) => list.id === activePlaylist)?.trackIds ?? []).map((id) => tracks.find((item) => item.id === id)).filter(Boolean);
     return tracks;
   }, [activeView, activePlaylist, customPlaylists, likedIds, query, recentIds, tracks]);
   const currentIndex = tracks.findIndex((item) => item.id === currentId);
@@ -140,25 +151,26 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders }) {
   const renderView = () => {
     if (playerOpen) return <NowPlaying track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipForward={skipForward} onSkipBack={skipBack} onToggleShuffle={() => setShuffle((value) => !value)} onToggleRepeat={() => setRepeat((value) => !value)} shuffle={shuffle} repeat={repeat} queueTracks={queue.map((id, index) => ({ item: tracks.find((song) => song.id === id), index })).filter(({ item }) => item)} comingUp={comingUp} onPlay={pickTrack} onRemoveFromQueue={(index) => setQueue((items) => items.filter((_, i) => i !== index))} onClose={() => setPlayerOpen(false)} />;
     if (query.trim()) return <>{heading("SEARCH", `Results for “${query.trim()}”`, viewTracks.length)}{trackList(viewTracks, "No matching tracks", "Try another title or artist.")}</>;
-    if (activeView === "Home") return <>{heading(library.tracks.length ? `SONA · ${library.tracks.length} TRACKS${library.added ? ` · ${library.added} NEW` : ""}` : "SONA", greeting())}{!library.tracks.length && <div className="library-notice"><p>{library.online ? "No music found in your folders, so you're hearing sample tracks." : "The library server isn't running, so you're hearing sample tracks. Start the app with npm run dev."}</p>{library.online && <button onClick={() => navigate("Settings")}>Choose folders</button>}</div>}<RecentlyPlayed title={recentTracks.length ? "Listen again" : "Start listening"} tracks={recentTracks.length ? recentTracks : tracks} onPlay={pickTrack} /><Trending title="Quick picks" tracks={tracks} onPlay={pickTrack} onQueue={addToQueue} /></>;
+    if (activeView === "Home") return <>{heading(library.tracks.length ? `SONA · ${library.tracks.length} TRACKS${library.added ? ` · ${library.added} NEW` : ""}` : "SONA", `${greeting()}, ${profile.name}`)}{!library.tracks.length && <div className="library-notice"><p>{library.online ? "No music found in your folders, so you're hearing sample tracks." : "The library server isn't running, so you're hearing sample tracks. Start the app with npm run dev."}</p>{library.online && <button onClick={() => navigate("Settings")}>Choose folders</button>}</div>}<RecentlyPlayed title={recentTracks.length ? "Listen again" : "Start listening"} tracks={recentTracks.length ? recentTracks : tracks} onPlay={pickTrack} /><Trending title="Quick picks" tracks={tracks} onPlay={pickTrack} onQueue={addToQueue} /></>;
     if (activeView === "Browse") return <>{heading("SONA LIBRARY", "Browse", tracks.length)}<Trending title="All tracks" tracks={tracks} onPlay={pickTrack} onQueue={addToQueue} /></>;
     if (activeView === "Charts") return <>{heading("SONA LIBRARY", "Charts")}<Trending title="Top tracks" tracks={tracks} onPlay={pickTrack} onQueue={addToQueue} ranked /></>;
     if (activeView === "Settings") return <>{heading("SONA", "Settings")}<Settings library={library} syncing={syncing} onResync={onResync} onSaveFolders={onSaveFolders} shuffle={shuffle} repeat={repeat} onToggleShuffle={() => setShuffle((value) => !value)} onToggleRepeat={() => setRepeat((value) => !value)} volume={volume} onVolumeChange={setVolume} counts={{ recent: recentIds.length, likes: likedIds.length, playlists: customPlaylists.length }} onClearHistory={() => setRecentIds([])} onClearLikes={() => setLikedIds([])} onClearPlaylists={() => { setCustomPlaylists([]); setActivePlaylist(null); }} /></>;
-    if (activeView === "Collection") return <>{heading("SONA LIBRARY", "Collection")}<section className="shelf"><h3 className="section-heading">Playlists</h3><div className="chip-row">{customPlaylists.map((item) => <button className="chip" key={item.id} onClick={() => openPlaylist(item.id)}><ListMusic size={15} />{item.name}<small>{item.trackIds.length}</small></button>)}<NewPlaylist className="chip-new" onCreate={createPlaylist} /></div></section><section className="shelf"><h3 className="section-heading">Liked tracks</h3>{trackList(viewTracks, "Nothing here yet", "Tap the heart on a playing track to save it here.")}</section></>;
+    if (activeView === "Collection") return <>{heading("SONA LIBRARY", "Collection")}<section className="shelf"><h3 className="section-heading">Playlists</h3><div className="playlist-grid"><button className="playlist-tile playlist-tile-new" onClick={() => setCreatingPlaylist(true)}><span className="playlist-new-art"><Plus size={36} /></span><strong>New playlist</strong><small>Name it, then pick songs</small></button>{customPlaylists.map((item) => { const count = playlistTracks(item).length; return <button className="playlist-tile" key={item.id} onClick={() => openPlaylist(item.id)}><PlaylistCover tracks={playlistTracks(item)} /><strong>{item.name}</strong><small>{count} {count === 1 ? "track" : "tracks"}</small></button>; })}</div></section><section className="shelf"><h3 className="section-heading">Liked tracks</h3>{trackList(viewTracks, "Nothing here yet", "Tap the heart on a playing track to save it here.")}</section></>;
     if (activeView === "Recently Played") return <>{heading("SONA LIBRARY", "Recently Played", viewTracks.length)}{trackList(viewTracks, "Nothing here yet", "Tracks you play will show up here.")}</>;
     const list = customPlaylists.find((item) => item.id === activePlaylist);
-    return <>{heading("PLAYLIST", list?.name ?? "Playlist", viewTracks.length)}{trackList(viewTracks, "Nothing here yet", "Add songs to this playlist to see them here.")}<div className="suggestions"><button className="suggestions-toggle" onClick={() => setShowPlaylistSuggestions((value) => !value)}><h2>{showPlaylistSuggestions ? "Choose tracks" : "Add tracks"}</h2><Plus size={18} /></button>{showPlaylistSuggestions && tracks.filter((item) => !list?.trackIds.includes(item.id)).map((item) => <div className="library-row" key={item.id}><span className="row-label"><strong>{item.title}</strong><small>{item.artist}</small></span><button className="icon-button" aria-label={`Add ${item.title} to playlist`} onClick={() => addToPlaylist(activePlaylist, item.id)}><Plus size={18} /></button></div>)}</div></>;
+    return <><header className="playlist-hero"><PlaylistCover tracks={viewTracks} className="hero-cover" /><div className="hero-text"><p className="eyebrow">PLAYLIST</p><h1>{list?.name ?? "Playlist"}</h1>{list?.description && <p className="hero-description">{list.description}</p>}<p className="track-count">{profile.name} · {viewTracks.length} {viewTracks.length === 1 ? "track" : "tracks"}</p><button className="hero-play" disabled={!viewTracks.length} onClick={() => playAll(viewTracks)}><Play size={18} fill="currentColor" /> Play</button></div></header>{trackList(viewTracks, "Nothing here yet", "Add songs to this playlist to see them here.")}<div className="suggestions"><button className="suggestions-toggle" onClick={() => setShowPlaylistSuggestions((value) => !value)}><h2>{showPlaylistSuggestions ? "Choose tracks" : "Add tracks"}</h2><Plus size={18} /></button>{showPlaylistSuggestions && tracks.filter((item) => !list?.trackIds.includes(item.id)).map((item) => <div className="library-row" key={item.id}><span className="row-label"><strong>{item.title}</strong><small>{item.artist}</small></span><button className="icon-button" aria-label={`Add ${item.title} to playlist`} onClick={() => addToPlaylist(activePlaylist, item.id)}><Plus size={18} /></button></div>)}</div></>;
   };
 
   return (
     <div className={`app ${playerOpen ? "player-open" : ""}`}>
-      <Sidebar activeView={playerOpen || query.trim() ? null : activeView} activePlaylist={activePlaylist} playlists={customPlaylists} onNavigate={navigate} onOpenPlaylist={openPlaylist} onCreatePlaylist={createPlaylist} />
+      <Sidebar activeView={playerOpen || query.trim() ? null : activeView} activePlaylist={activePlaylist} playlists={customPlaylists} onNavigate={navigate} onOpenPlaylist={openPlaylist} onNewPlaylist={() => setCreatingPlaylist(true)} />
       <main className="content">
-        <div className="topbar"><button className="topbar-logo" onClick={() => navigate("Home")} aria-label="SONA home">SONA</button><label className="search-wrap"><Search size={18} /><input className="search" type="search" placeholder="Search songs or artists" value={query} onChange={(event) => { setQuery(event.target.value); setPlayerOpen(false); }} />{query && <button className="search-clear" aria-label="Clear search" onClick={() => setQuery("")}><X size={16} /></button>}</label><span className="avatar" aria-label="Local library">S</span></div>
+        <div className="topbar"><button className="topbar-logo" onClick={() => navigate("Home")} aria-label="SONA home">SONA</button><label className="search-wrap"><Search size={18} /><input className="search" type="search" placeholder="Search songs or artists" value={query} onChange={(event) => { setQuery(event.target.value); setPlayerOpen(false); }} />{query && <button className="search-clear" aria-label="Clear search" onClick={() => setQuery("")}><X size={16} /></button>}</label><ProfileCard profile={profile} onSave={setProfile} stats={{ tracks: tracks.length, likes: likedIds.length, playlists: customPlaylists.length }} onNavigate={navigate} onSync={library.online ? onResync : null} syncing={syncing} /></div>
         <div className="view">{renderView()}</div>
       </main>
       <PlayerBar track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipBack={skipBack} onSkipForward={skipForward} shuffle={shuffle} repeat={repeat} onToggleShuffle={() => setShuffle((value) => !value)} onToggleRepeat={() => setRepeat((value) => !value)} volume={volume} onVolumeChange={setVolume} expanded={playerOpen} onToggleExpanded={() => setPlayerOpen((value) => !value)} />
       <audio ref={audioRef} {...audio.handlers} preload="metadata" />
+      {creatingPlaylist && <PlaylistDialog tracks={tracks} existingNames={customPlaylists.map((item) => item.name)} onCreate={createPlaylist} onClose={() => setCreatingPlaylist(false)} />}
     </div>
   );
 }
