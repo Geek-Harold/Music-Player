@@ -1,5 +1,6 @@
 import "./PlayerBar.css";
-import { Heart, SkipBack, Play, Pause, SkipForward, Shuffle, Repeat, Volume2, VolumeX, ChevronUp, ChevronDown } from "lucide-react";
+import { ShuffleButton, RepeatButton } from "./PlaybackModes";
+import { Heart, SkipBack, Play, Pause, SkipForward, Volume2, VolumeX, ChevronUp, ChevronDown } from "lucide-react";
 
 export default function PlayerBar({ track, audio, liked, onLike, onSkipBack, onSkipForward, shuffle, repeat, onToggleShuffle, onToggleRepeat, volume, onVolumeChange, expanded, onToggleExpanded }) {
   const { isPlaying, progress, duration, togglePlay, formatTime, seek } = audio;
@@ -19,8 +20,8 @@ export default function PlayerBar({ track, audio, liked, onLike, onSkipBack, onS
       </div>
       <div className="bar-extras">
         <label className="bar-volume"><span aria-hidden="true">{volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}</span><input type="range" min="0" max="100" value={volume} aria-label="Volume" onChange={(event) => onVolumeChange(Number(event.target.value))} /></label>
-        <button className={`ctrl-btn toggle-control ${shuffle ? "selected" : ""}`} onClick={onToggleShuffle} aria-label="Toggle shuffle" aria-pressed={shuffle}><Shuffle size={18} /></button>
-        <button className={`ctrl-btn toggle-control ${repeat ? "selected" : ""}`} onClick={onToggleRepeat} aria-label="Toggle repeat" aria-pressed={repeat}><Repeat size={18} /></button>
+        <ShuffleButton shuffle={shuffle} onToggle={onToggleShuffle} />
+        <RepeatButton repeat={repeat} onCycle={onToggleRepeat} />
         <button className="ctrl-btn" onClick={onToggleExpanded} aria-label={expanded ? "Close player" : "Open player and queue"}>{expanded ? <ChevronDown size={20} /> : <ChevronUp size={20} />}</button>
       </div>
     </footer>

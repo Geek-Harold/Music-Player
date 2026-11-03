@@ -2,7 +2,7 @@ import { useState } from "react";
 import "./Settings.css";
 import { Shuffle, Repeat, Volume2, VolumeX, Trash2, RefreshCw, Folder, FolderX, Plus, X } from "lucide-react";
 
-export default function Settings({ library, syncing, onResync, onSaveFolders, shuffle, repeat, onToggleShuffle, onToggleRepeat, volume, onVolumeChange, counts, onClearHistory, onClearLikes, onClearPlaylists }) {
+export default function Settings({ library, syncing, onResync, onSaveFolders, shuffle, repeat, onToggleShuffle, onSetRepeat, volume, onVolumeChange, counts, onClearHistory, onClearLikes, onClearPlaylists }) {
   const [newFolder, setNewFolder] = useState("");
   const [folderError, setFolderError] = useState("");
   const confirmThen = (message, action) => () => { if (window.confirm(message)) action(); };
@@ -35,8 +35,8 @@ export default function Settings({ library, syncing, onResync, onSaveFolders, sh
         </>}
       </section>
       <section className="settings-card"><h2>Playback</h2>
-        <div className="settings-row"><span className="settings-label"><Shuffle size={18} /><span><strong>Shuffle</strong><small>Pick the next track at random</small></span></span><button className={`switch ${shuffle ? "on" : ""}`} role="switch" aria-checked={shuffle} aria-label="Shuffle" onClick={onToggleShuffle}><span /></button></div>
-        <div className="settings-row"><span className="settings-label"><Repeat size={18} /><span><strong>Repeat</strong><small>Loop the current track</small></span></span><button className={`switch ${repeat ? "on" : ""}`} role="switch" aria-checked={repeat} aria-label="Repeat" onClick={onToggleRepeat}><span /></button></div>
+        <div className="settings-row"><span className="settings-label"><Shuffle size={18} /><span><strong>Shuffle</strong><small>Play the current list in a random order, each song once per lap</small></span></span><button className={`switch ${shuffle ? "on" : ""}`} role="switch" aria-checked={shuffle} aria-label="Shuffle" onClick={onToggleShuffle}><span /></button></div>
+        <div className="settings-row"><span className="settings-label"><Repeat size={18} /><span><strong>Repeat</strong><small>{{ off: "Stop after the last song in the list", all: "Start the list again after the last song", one: "Keep playing the current song" }[repeat]}</small></span></span><div className="segmented" role="radiogroup" aria-label="Repeat">{[["off", "Off"], ["all", "All"], ["one", "One"]].map(([mode, label]) => <button key={mode} role="radio" aria-checked={repeat === mode} className={repeat === mode ? "on" : ""} onClick={() => onSetRepeat(mode)}>{label}</button>)}</div></div>
         <div className="settings-row"><span className="settings-label">{volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}<span><strong>Volume</strong><small>{volume}%</small></span></span><input className="settings-volume" type="range" min="0" max="100" value={volume} aria-label="Volume" onChange={(event) => onVolumeChange(Number(event.target.value))} /></div>
       </section>
       <section className="settings-card"><h2>Library data</h2><p className="muted">Stored in this browser only.</p>

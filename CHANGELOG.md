@@ -5,6 +5,11 @@ All notable changes to SONA. Format loosely follows Keep a Changelog.
 ## [Unreleased]
 
 ### Added
+- Refresh-proof session: the current song and exact position, queue, play context and shuffle order, the open page or playlist, search text and whether the full player is open are saved and restored (paused at the saved spot) after a refresh or reopening the tab
+- Repeat modes: the loop button cycles Off → All → One (with a "1" icon and an active dot). Off stops after the last song, All wraps around, One loops the current song. Settings has an Off/All/One selector
+- Proper shuffle: a Fisher–Yates play order where every song plays once per lap, starting from the current song; Previous walks back through the same order; each new lap is reshuffled without repeating the last song
+- Play context: songs play within the list you picked them from (a playlist, search results, liked tracks…), shown as "Playing from …" in Up next, which now lists the real upcoming order
+- Playlist pages have a Shuffle button next to Play; shuffle and repeat settings are remembered
 - Profile card: the top-bar avatar opens a card with your name, colour, "listening since" date, track/liked/playlist counts and shortcuts (collection, history, settings, sync). Name and colour are editable and saved in the browser; Home greets you by name
 - New playlist dialog: title, optional description, and a searchable song picker with a live cover mosaic; checks for empty and duplicate names
 - Collection shows playlists as a grid of cover tiles with a "New playlist" tile; playlist pages get a cover, description and a Play button that queues the whole playlist

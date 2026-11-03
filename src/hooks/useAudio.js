@@ -7,7 +7,8 @@ export function formatTime(seconds) {
   return `${minutes}:${remainder.toString().padStart(2, "0")}`;
 }
 
-export default function useAudio(track, onEnded, repeat = false) {
+// `resumeAt` (seconds) is where the first track starts, e.g. the spot you were at before a refresh.
+export default function useAudio(track, onEnded, repeat = false, resumeAt = 0) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -21,6 +22,7 @@ export default function useAudio(track, onEnded, repeat = false) {
   const src = track?.src;
   const initialSrc = useRef(src);
   const startedRef = useRef(false);
+  const resumeRef = useRef(resumeAt);
 
   useEffect(() => {
     const element = audioRef.current;
@@ -33,8 +35,17 @@ export default function useAudio(track, onEnded, repeat = false) {
     element.load();
     if (!startedRef.current && src === initialSrc.current) {
       setIsLoading(false);
+      const at = resumeRef.current;
+      if (at > 0) {
+        // Seeking needs the duration, so wait for metadata. The seek fires a
+        // timeupdate, which moves the progress bar to the saved spot.
+        element.addEventListener("loadedmetadata", () => {
+          if (element.src.endsWith(src)) element.currentTime = Math.min(at, Math.max(0, element.duration - 1));
+        }, { once: true });
+      }
       return;
     }
+    resumeRef.current = 0;
     startedRef.current = true;
     setIsLoading(true);
     element.play().catch(() => {
@@ -82,10 +93,14 @@ export default function useAudio(track, onEnded, repeat = false) {
     },
     onLoadedMetadata: (event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0),
     onEnded: () => {
-      if (repeat && audioRef.current) {
+      const replay = () => {
+        if (!audioRef.current) return;
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => setError("Playback could not restart."));
-      } else { setIsPlaying(false); onEnded?.(); }
+      };
+      if (repeat) replay();
+      // `replay` lets the caller loop the same song (e.g. repeat-all on a one-song list).
+      else { setIsPlaying(false); onEnded?.(replay); }
     },
     onError: () => { setIsPlaying(false); setIsLoading(false); setError("This track could not be loaded."); },
   };

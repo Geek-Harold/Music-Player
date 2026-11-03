@@ -24,3 +24,4 @@
 .pv-row-main img{width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;filter:sepia(.4) hue-rotate(-30deg) saturate(.8)}
 .pv-row-main span{display:flex;flex-direction:column;gap:2px;min-width:0}.pv-row-main strong{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pv-row-main small{color:var(--mauve-mid);font-size:13px}
 @media(max-width:1000px){.player-view{grid-template-columns:1fr;gap:20px}.pv-record{width:min(100%,420px)}.pv-upnext{max-height:none}}
+.pv-end{margin-top:12px;padding:10px 6px 2px;border-top:1px dashed rgba(109,68,88,.25);font-size:12px;color:var(--mauve-mid);text-align:center}
