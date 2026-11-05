@@ -1,6 +1,6 @@
 # SONA — Vinyl Music Player
 
-A vinyl-inspired music player for the music on your own computer, built with React 19, Vite and a small Express server.
+A vinyl-inspired music player for the music on your own computer, built with React 19 and Vite. It runs as a desktop app (Electron) that works fully offline, or in the browser with a small Express server.
 
 ## Features
 - **Library sync:** every time the app opens it scans your music folders and picks up new, changed and deleted files
@@ -17,7 +17,16 @@ A vinyl-inspired music player for the music on your own computer, built with Rea
 
 Likes, history, playlists, your profile, volume, shuffle/repeat and your listening session (current song and position, queue, open page) are saved in the browser's `localStorage`, so a refresh brings you back to where you were, paused at the same spot.
 
-## Getting started
+## Desktop app
+```bash
+npm install
+npm run app
+```
+`npm run app` builds the interface and opens SONA in its own window. There is no server or port: the app reads your music folders and plays files straight from disk, and works without an internet connection. Your library cache and folder choices are saved in `%APPDATA%\SONA\library`; likes, playlists and the rest are saved in the app itself.
+
+To make an installer, run `npm run dist:win`. It writes `SONA Setup <version>.exe` to `release/`.
+
+## Running in the browser
 ```bash
 npm install
 npm run dev
@@ -33,18 +42,23 @@ Then open http://localhost:5180. `npm run dev` starts two things side by side:
 | `npm run server` | Run only the library server |
 | `npm run build` | Production build into `dist/` |
 | `npm run lint` | Run ESLint |
+| `npm run app` | Build and open the desktop app |
+| `npm run dist:win` | Build a Windows installer into `release/` |
 
 ## Music folders
 By default SONA scans `Music`, `Downloads` and `OneDrive\Music` in your user folder, including every folder inside them. You can add or remove folders under **Settings → Music folders**.
 
-The first scan reads each file's tags. After that, results are cached in `server/data/library.json`, so a re-sync only reads files that are new or changed. Folder choices are saved in `server/data/settings.json`. Both files are git-ignored. Delete them to start fresh.
+The first scan reads each file's tags. After that, results are cached (in the browser version, `server/data/library.json`), so a re-sync only reads files that are new or changed. Folder choices are saved next to it in `settings.json`. In the browser version both files are git-ignored. Delete them to start fresh.
 
 If no music is found, or the library server isn't running, the app falls back to a few sample tracks (these need an internet connection).
 
 ## Project structure
 ```
+electron/
+  main.js            desktop window; answers the /api routes over sona://app, no server
 server/
-  index.js           Express API: /api/sync, /api/folders, track audio + cover art
+  api.js             the /api logic, shared by the desktop app and the Express server
+  index.js           Express API for the browser version: /api/sync, /api/folders, track audio + cover art
   library.js         folder scanning, tag reading, cache
 src/
   App.jsx            syncs the library on open, then app state: current track, queue, likes, playlists, views

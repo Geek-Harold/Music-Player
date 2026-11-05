@@ -5,6 +5,8 @@ All notable changes to SONA. Format loosely follows Keep a Changelog.
 ## [Unreleased]
 
 ### Added
+- Desktop app (Electron): `npm run app` opens SONA in its own window with no server or port. It reads your music folders, tags and album art directly and plays files from disk with full seeking, through a private `sona://app` address. Your library cache and folder choices live in `%APPDATA%\SONA\library`. `npm run dist:win` builds a Windows installer into `release/`
+- Fonts (Fredoka, Cinzel) are bundled with the app instead of loaded from Google Fonts, so it looks right offline
 - New browser tab icon: a SONA vinyl record (mauve label, yellow spindle, mauve rim so it shows on light and dark tab bars), replacing the default Vite logo
 - Hamburger menu: on desktop it collapses the sidebar to an icon rail and expands it again (remembered); on tablets and phones it opens a slide-over drawer with the full menu and playlists, which closes on Esc, a tap outside, or picking a page
 - Profile picture: upload a photo from Edit profile (or by clicking the big avatar); it's centre-cropped to a 256px square, shown in the top bar and profile card, and can be changed or removed. Non-image files are rejected with a message

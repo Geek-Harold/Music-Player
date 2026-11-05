@@ -7,29 +7,30 @@ import { parseFile } from "music-metadata";
 const AUDIO_EXTENSIONS = new Set([".mp3", ".m4a", ".aac", ".flac", ".wav", ".ogg", ".oga", ".opus"]);
 // Folders that are never music and can be huge or locked.
 const SKIP_DIRS = new Set(["node_modules", "$recycle.bin", "appdata", "system volume information"]);
-const DATA_DIR = path.join(import.meta.dirname, "data");
-const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
-const CACHE_FILE = path.join(DATA_DIR, "library.json");
+// The desktop app points SONA_DATA_DIR at its per-user folder; read lazily so it can set it after importing.
+const dataDir = () => process.env.SONA_DATA_DIR || path.join(import.meta.dirname, "data");
+const settingsFile = () => path.join(dataDir(), "settings.json");
+const cacheFile = () => path.join(dataDir(), "library.json");
 
 const readJson = async (file, fallback) => {
   try { return JSON.parse(await readFile(file, "utf8")); }
   catch { return fallback; }
 };
 const writeJson = async (file, value) => {
-  await mkdir(DATA_DIR, { recursive: true });
+  await mkdir(dataDir(), { recursive: true });
   await writeFile(file, JSON.stringify(value, null, 2));
 };
 
 export const defaultFolders = () => ["Music", "Downloads", path.join("OneDrive", "Music")].map((folder) => path.join(os.homedir(), folder));
 
 export async function getFolders() {
-  const settings = await readJson(SETTINGS_FILE, null);
+  const settings = await readJson(settingsFile(), null);
   return settings?.folders ?? defaultFolders();
 }
 
 export async function setFolders(folders) {
   const clean = [...new Set(folders.map((folder) => path.resolve(String(folder).trim())).filter(Boolean))];
-  await writeJson(SETTINGS_FILE, { folders: clean });
+  await writeJson(settingsFile(), { folders: clean });
   return clean;
 }
 
@@ -80,7 +81,7 @@ let running = null;
 async function runSync() {
   const started = Date.now();
   const folders = await getFolders();
-  const cached = new Map((await readJson(CACHE_FILE, { tracks: [] })).tracks.map((track) => [track.path, track]));
+  const cached = new Map((await readJson(cacheFile(), { tracks: [] })).tracks.map((track) => [track.path, track]));
   const found = new Map();
   let added = 0;
   let updated = 0;
@@ -100,7 +101,7 @@ async function runSync() {
   const removed = [...cached.keys()].filter((file) => !found.has(file)).length;
   const tracks = [...found.values()].sort((a, b) => a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title));
   const scannedAt = new Date().toISOString();
-  await writeJson(CACHE_FILE, { scannedAt, tracks });
+  await writeJson(cacheFile(), { scannedAt, tracks });
   index = new Map(tracks.map((track) => [track.id, track]));
   return { tracks, scannedAt, added, updated, removed, ms: Date.now() - started };
 }
@@ -112,7 +113,7 @@ export function syncLibrary() {
 }
 
 export async function getTrack(id) {
-  if (!index) index = new Map((await readJson(CACHE_FILE, { tracks: [] })).tracks.map((track) => [track.id, track]));
+  if (!index) index = new Map((await readJson(cacheFile(), { tracks: [] })).tracks.map((track) => [track.id, track]));
   return index.get(id);
 }
 
