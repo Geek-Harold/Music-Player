@@ -1,0 +1,10 @@
+/* Wraps a row's artwork so the bars can sit on top of it. */
+:is(.row-main,.trending-play) .thumb{position:relative;display:block;flex-shrink:0}
+.thumb .playing-bars{position:absolute;inset:0;display:flex;flex-direction:row;align-items:flex-end;justify-content:center;gap:3px;padding:0 0 13px;border-radius:8px;background:rgba(var(--shadow),.45)}
+.thumb .playing-bars>span{display:block;width:4px;height:20px;border-radius:2px;background:var(--accent-yellow);transform-origin:bottom;transform:scaleY(.3);transition:transform .3s var(--ease-out)}
+/* scaleY, not height: each bar stays on the compositor. Uneven durations so they never line up. */
+.thumb .playing-bars.on>span{animation:eq .9s ease-in-out infinite alternate}
+.thumb .playing-bars.on>span:nth-child(2){animation-duration:.6s;animation-delay:-.3s}
+.thumb .playing-bars.on>span:nth-child(3){animation-duration:.75s;animation-delay:-.5s}
+@keyframes eq{from{transform:scaleY(.25)}to{transform:scaleY(1)}}
+@media(prefers-reduced-motion:reduce){.thumb .playing-bars.on>span{animation:none;transform:scaleY(.7)}}

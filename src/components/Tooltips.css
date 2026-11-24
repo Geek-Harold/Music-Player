@@ -1,0 +1,10 @@
+/* Small, quick and anchored: it grows out of the control it labels (transform-origin on the
+   trigger's side). The first one eases in; neighbours appear instantly (data-instant).
+   Leaves faster than it came. */
+.tooltip{position:fixed;z-index:60;padding:5px 10px;border-radius:8px;background:var(--plum);color:var(--bg-cream);font-size:12px;font-weight:500;line-height:1.3;white-space:nowrap;pointer-events:none;box-shadow:0 4px 14px rgba(var(--shadow),.22);transition:opacity .125s var(--ease-out),transform .125s var(--ease-out)}
+.tooltip[data-side=top]{transform:translate(calc(-50% + var(--nudge,0px)),-100%);transform-origin:bottom center}
+.tooltip[data-side=right]{transform:translate(0,-50%);transform-origin:left center}
+@starting-style{.tooltip[data-side=top][data-state=open]{opacity:0;transform:translate(calc(-50% + var(--nudge,0px)),-100%) scale(.97)}.tooltip[data-side=right][data-state=open]{opacity:0;transform:translate(0,-50%) scale(.97)}}
+.tooltip[data-state=closed]{opacity:0;transition-duration:.08s}
+.tooltip[data-instant]{transition:none}
+@media(prefers-reduced-motion:reduce){.tooltip{transition-property:opacity}}
