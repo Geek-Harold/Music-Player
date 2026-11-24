@@ -3,8 +3,9 @@ import "./PlaylistDialog.css";
 import PlaylistCover from "./PlaylistCover";
 import { Search, X, Check } from "lucide-react";
 
-export default function PlaylistDialog({ tracks, existingNames, onCreate, onClose }) {
-  const dialogRef = useRef(null);
+// The parent keeps this mounted while `state` is "closed" so it can fade out
+// (see usePresence), then unmounts it, which also takes it off the top layer.
+export default function PlaylistDialog({ ref: dialogRef, state, tracks, existingNames, onCreate, onClose }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selected, setSelected] = useState([]);
@@ -14,9 +15,16 @@ export default function PlaylistDialog({ tracks, existingNames, onCreate, onClos
   const nameRef = useRef(null);
   // showModal gives us the backdrop, focus trapping and Esc-to-close for free.
   // It focuses the first button (Close), so move focus to the title field after.
-  useEffect(() => { dialogRef.current?.showModal(); nameRef.current?.focus(); }, []);
+  // Unmounting skips close(), which would normally hand focus back, so do that ourselves.
+  // Captured at first render, before the dialog takes focus.
+  const [opener] = useState(() => document.activeElement);
+  useEffect(() => {
+    dialogRef.current?.showModal();
+    nameRef.current?.focus();
+    return () => opener?.focus?.();
+  }, [dialogRef, opener]);
 
-  const close = () => dialogRef.current?.close();
+  const close = onClose;
   const toggle = (id) => setSelected((ids) => ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]);
   const term = filter.trim().toLowerCase();
   const visible = term ? tracks.filter((track) => `${track.title} ${track.artist}`.toLowerCase().includes(term)) : tracks;
@@ -30,8 +38,9 @@ export default function PlaylistDialog({ tracks, existingNames, onCreate, onClos
   };
 
   return (
-    <dialog ref={dialogRef} className="playlist-dialog" aria-labelledby="playlist-dialog-title" onClose={onClose} onClick={(event) => { if (event.target === dialogRef.current) close(); }}>
-      <form className="pd-form" onSubmit={submit} noValidate>
+    <dialog ref={dialogRef} className="playlist-dialog" data-state={state} aria-labelledby="playlist-dialog-title" onCancel={(event) => { event.preventDefault(); close(); }} onClose={onClose} onClick={(event) => { if (event.target === dialogRef.current) close(); }}>
+      {/* inert while leaving, so a second Enter can't create the playlist twice */}
+      <form className="pd-form" onSubmit={submit} noValidate inert={state === "closed"}>
         <header className="pd-header"><div><p className="eyebrow">NEW PLAYLIST</p><h2 id="playlist-dialog-title">{name.trim() || "Untitled playlist"}</h2></div><button type="button" className="icon-button" aria-label="Close" onClick={close}><X size={20} /></button></header>
         <div className="pd-details">
           <PlaylistCover tracks={selectedTracks} className="pd-cover" />

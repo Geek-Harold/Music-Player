@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./ProfileCard.css";
+import usePresence from "../hooks/usePresence";
 import { Heart, Clock3, Settings, RefreshCw, Pencil, Check, X, Camera, Trash2 } from "lucide-react";
 
 const PROFILE_COLORS = ["#b98a99", "#8a5a6e", "#6d4458", "#d69e36", "#5f7a6e", "#5a6f8a"];
@@ -26,6 +27,8 @@ export default function ProfileCard({ profile, onSave, stats, onNavigate, onSync
   const [draft, setDraft] = useState(profile);
   const wrapRef = useRef(null);
   const fileRef = useRef(null);
+  const cardRef = useRef(null);
+  const { present, state } = usePresence(open, cardRef);
   const [photoError, setPhotoError] = useState("");
 
   useEffect(() => {
@@ -37,7 +40,8 @@ export default function ProfileCard({ profile, onSave, stats, onNavigate, onSync
     return () => { document.removeEventListener("pointerdown", onPointer); document.removeEventListener("keydown", onKey); };
   }, [open]);
 
-  const toggle = () => { setOpen((value) => !value); setEditing(false); };
+  // Reset editing on open, not on close, so the card doesn't swap content while it fades out.
+  const toggle = () => { if (!open) setEditing(false); setOpen(!open); };
   const startEdit = () => { setDraft(profile); setPhotoError(""); setEditing(true); };
   const choosePhoto = async (event) => {
     const file = event.target.files?.[0];
@@ -67,7 +71,7 @@ export default function ProfileCard({ profile, onSave, stats, onNavigate, onSync
   return (
     <div className="profile" ref={wrapRef}>
       <button className="avatar" style={{ background: profile.color }} onClick={toggle} aria-label={`Profile: ${profile.name}`} aria-expanded={open} aria-haspopup="dialog">{avatarContent(profile)}</button>
-      {open && <section className="profile-card" role="dialog" aria-label="Your profile">
+      {present && <section ref={cardRef} className="profile-card" role="dialog" aria-label="Your profile" data-state={state} inert={!open}>
         <div className="profile-banner" style={{ "--tone": shown.color }} />
         <div className="profile-head">
           {editing ? <button type="button" className="avatar avatar-lg avatar-edit" style={{ background: shown.color }} onClick={() => fileRef.current?.click()} aria-label={draft.photo ? "Change profile picture" : "Upload profile picture"}>{avatarContent(shown)}<span className="avatar-camera" aria-hidden="true"><Camera size={18} /></span></button> : <span className="avatar avatar-lg" style={{ background: shown.color }}>{avatarContent(shown)}</span>}

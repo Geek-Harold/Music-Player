@@ -3,7 +3,12 @@
 .pv-close{position:absolute;top:0;left:0;z-index:2}
 .pv-record{position:relative;display:flex;align-items:center;width:min(100%,560px);padding-right:24%}
 .pv-sleeve{position:relative;z-index:1;width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;box-shadow:5px 5px 0 rgba(var(--shadow),.18);filter:sepia(.4) hue-rotate(-30deg) saturate(.8)}
-.pv-disc{position:absolute;right:0;width:72%;transition:transform .4s}
+/* The shadow lives here, not on the spinning record, so the light stays put while it turns. */
+.pv-disc{position:absolute;right:0;width:72%;border-radius:50%;box-shadow:0 10px 40px rgba(var(--shadow),.4)}
+/* A new track: the sleeve swaps and a fresh record slides out from behind it. */
+.pv-disc{animation:disc-out .4s var(--ease-drawer)}@keyframes disc-out{from{transform:translateX(-35%)}}
+.pv-sleeve{animation:sleeve-in .3s var(--ease-out)}@keyframes sleeve-in{from{opacity:.4;transform:scale(.98)}}
+@media(prefers-reduced-motion:reduce){.pv-disc{animation:none}@keyframes sleeve-in{from{opacity:.4}}}
 .pv-info{width:min(100%,560px)}
 .pv-title-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}.pv-title-row>div{flex:1;min-width:0}
 .np-title{font-size:clamp(22px,2.6vw,30px);font-weight:600;color:var(--ink);line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -19,7 +24,7 @@
 .pv-upnext{background:rgba(var(--surface-rgb),.82);border-radius:18px;padding:18px 16px;align-self:start;max-height:100%;overflow-y:auto}
 .pv-tab{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--ink);padding-bottom:10px;border-bottom:2px solid var(--mauve-dark);display:inline-block}
 .pv-group{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mauve-mid);font-weight:600;margin:16px 0 6px}
-.pv-row{display:flex;align-items:center;gap:10px;padding:6px;border-radius:10px}.pv-row:hover{background:rgba(var(--tint),.1)}
+.pv-row{display:flex;align-items:center;gap:10px;padding:6px;border-radius:10px}@media(hover:hover) and (pointer:fine){.pv-row:hover{background:rgba(var(--tint),.1)}}
 .pv-row-main{display:flex;align-items:center;gap:12px;flex:1;min-width:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer}
 .pv-row-main img{width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;filter:sepia(.4) hue-rotate(-30deg) saturate(.8)}
 .pv-row-main span{display:flex;flex-direction:column;gap:2px;min-width:0}.pv-row-main strong{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pv-row-main small{color:var(--mauve-mid);font-size:13px}

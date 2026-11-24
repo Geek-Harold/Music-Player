@@ -13,9 +13,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: spin 6s linear infinite;
-  animation-play-state: paused;
-  box-shadow: 0 10px 40px rgba(var(--shadow),0.4);
+
 }
 
 .vinyl-label {
@@ -47,12 +45,4 @@
   background: var(--accent-yellow);
 }
 
-.vinyl.spinning {
-  animation-play-state: running;
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .vinyl.spinning {
-    animation-play-state: paused;
-  }
-}

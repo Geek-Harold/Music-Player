@@ -1,26 +1,39 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import "./App.css";
 import Sidebar from "./components/Sidebar";
 import ProfileCard from "./components/ProfileCard";
 import PlaylistCover from "./components/PlaylistCover";
+import AlbumCover from "./components/AlbumCover";
 import PlaylistDialog from "./components/PlaylistDialog";
 import NowPlaying from "./components/NowPlaying";
 import RecentlyPlayed from "./components/RecentlyPlayed";
 import Trending from "./components/Trending";
 import PlayerBar from "./components/PlayerBar";
 import Settings from "./components/Settings";
+import SortMenu from "./components/SortMenu";
+import PlayingBars from "./components/PlayingBars";
+import QueueButton from "./components/QueueButton";
+import Tooltips from "./components/Tooltips";
+import { isSortKey, sortTracks } from "./sorting";
+import { formatLength, groupAlbums } from "./albums";
 import useAudio from "./hooks/useAudio";
 import useMediaQuery from "./hooks/useMediaQuery";
+import usePresence from "./hooks/usePresence";
+import { measureSidebarEdge, morphSidebar } from "./sidebarMorph";
+import { removeRow } from "./motion";
 import { applyTheme, readTheme } from "./theme";
 import { playlist as sampleTracks } from "./data/tracks";
-import { ListMusic, Plus, Search, X, Disc3, Play, Shuffle, Menu } from "lucide-react";
+import { ListMusic, Plus, Search, X, Disc3, Play, Shuffle, Menu, ChevronLeft } from "lucide-react";
 
 const readSaved = (key, fallback) => {
   try { const value = JSON.parse(localStorage.getItem(key)); return value ?? fallback; }
   catch { return fallback; }
 };
 const REPEAT_MODES = ["off", "all", "one"];
-const VIEWS = ["Home", "Browse", "Collection", "Recently Played", "Charts", "Settings", "Playlist"];
+// What "Default" means in each list's Sort menu.
+const DEFAULT_SORT_LABELS = { Search: "Best match", Browse: "Library order", Collection: "Recently liked", "Recently Played": "Recently played", Playlist: "Playlist order", Album: "Album order" };
+const VIEWS = ["Home", "Browse", "Collection", "Recently Played", "Charts", "Settings", "Playlist", "Albums", "Album"];
 // Fisher–Yates: every order is equally likely. `first`, if it's in the list, is pinned to the front.
 const shuffled = (ids, first) => {
   const rest = ids.filter((id) => id !== first);
@@ -49,6 +62,12 @@ export default function App() {
   // Light, dark or "system". Lives here so it also applies to the splash screen.
   const [theme, setTheme] = useState(readTheme);
   useEffect(() => { applyTheme(theme); }, [theme]);
+  // Crossfade the whole page between palettes instead of snapping (a view transition is
+  // a composited snapshot fade). Opacity only, so it stays on with reduced motion.
+  const changeTheme = useCallback((next) => {
+    if (!document.startViewTransition) return setTheme(next);
+    document.startViewTransition(() => { applyTheme(next); flushSync(() => setTheme(next)); });
+  }, []);
   const resync = useCallback(async () => {
     setSyncing(true);
     try { setLibrary({ ...(await syncLibrary()), online: true }); }
@@ -67,7 +86,7 @@ export default function App() {
   }, []);
 
   if (!library) return <div className="splash" role="status"><Disc3 size={44} className="splash-disc" /><p className="splash-logo">SONA</p><p>Syncing your music…</p></div>;
-  return <MusicPlayer tracks={library.tracks.length ? library.tracks : sampleTracks} library={library} syncing={syncing} onResync={resync} onSaveFolders={saveFolders} theme={theme} onThemeChange={setTheme} />;
+  return <MusicPlayer tracks={library.tracks.length ? library.tracks : sampleTracks} library={library} syncing={syncing} onResync={resync} onSaveFolders={saveFolders} theme={theme} onThemeChange={changeTheme} />;
 }
 
 function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme, onThemeChange }) {
@@ -84,6 +103,7 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
       shuffleOrder: Array.isArray(saved.shuffleOrder) ? saved.shuffleOrder : null,
       activeView: VIEWS.includes(saved.activeView) ? saved.activeView : "Home",
       activePlaylist: saved.activePlaylist ?? null,
+      activeAlbum: typeof saved.activeAlbum === "string" ? saved.activeAlbum : null,
       playerOpen: saved.playerOpen === true,
       query: typeof saved.query === "string" ? saved.query : "",
     };
@@ -97,7 +117,15 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   const restoresPlaylist = session.activeView !== "Playlist" || customPlaylists.some((item) => item.id === session.activePlaylist);
   const [activeView, setActiveView] = useState(restoresPlaylist ? session.activeView : "Home");
   const [activePlaylist, setActivePlaylist] = useState(restoresPlaylist ? session.activePlaylist : null);
+  const [activeAlbum, setActiveAlbum] = useState(session.activeAlbum);
   const [playerOpen, setPlayerOpen] = useState(session.playerOpen);
+  // The full player rises out of the bar and sinks back into it (see .player-view), except when
+  // closed from the keyboard (Esc, typing a search), which should feel instant.
+  const [playerInstant, setPlayerInstant] = useState(false);
+  const playerRef = useRef(null);
+  const player = usePresence(playerOpen, playerRef, { subtree: false });
+  const closePlayerNow = () => { setPlayerInstant(true); setPlayerOpen(false); };
+  const togglePlayer = () => { setPlayerInstant(false); setPlayerOpen((value) => !value); };
   const [query, setQuery] = useState(session.query);
   const [shuffle, setShuffle] = useState(() => readSaved("sona:shuffle", false) === true);
   const [repeat, setRepeat] = useState(() => { const saved = readSaved("sona:repeat", "off"); return REPEAT_MODES.includes(saved) ? saved : "off"; });
@@ -105,7 +133,14 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   const [context, setContext] = useState(session.context);
   const [shuffleOrder, setShuffleOrder] = useState(() => session.shuffleOrder ?? shuffled(tracks.map((item) => item.id), session.currentId));
   const [showPlaylistSuggestions, setShowPlaylistSuggestions] = useState(false);
+  // Chosen sort order per list (Browse, Search, Collection…), remembered between visits.
+  const [sorts, setSorts] = useState(() => readSaved("sona:sorts", {}) ?? {});
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
+  // True for a moment after the app opens, so the page can settle in once (see .app.arriving).
+  const [arriving, setArriving] = useState(true);
+  useEffect(() => { const timer = setTimeout(() => setArriving(false), 900); return () => clearTimeout(timer); }, []);
+  const dialogRef = useRef(null);
+  const playlistDialog = usePresence(creatingPlaylist, dialogRef);
   // Hamburger menu. On desktop it collapses the sidebar to an icon rail (remembered);
   // on tablets and phones, where space is tight, it opens a slide-over drawer instead.
   const isTablet = useMediaQuery("(max-width: 900px)");
@@ -114,7 +149,21 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   const [drawerOpen, setDrawerOpen] = useState(false);
   const sidebarVariant = isPhone ? "tabs" : isTablet || sidebarCollapsed ? "rail" : "full";
   const showDrawer = drawerOpen && isTablet;
-  const toggleMenu = () => { if (isTablet) setDrawerOpen((open) => !open); else setSidebarCollapsed((value) => !value); };
+  const drawerRef = useRef(null);
+  const drawer = usePresence(showDrawer, drawerRef);
+  // Collapsing on desktop animates: note where the content edge is now, then morph from there once the grid has changed.
+  const appRef = useRef(null);
+  const morphFrom = useRef(null);
+  const toggleMenu = () => {
+    if (isTablet) return setDrawerOpen((open) => !open);
+    morphFrom.current = measureSidebarEdge(appRef.current);
+    setSidebarCollapsed((value) => !value);
+  };
+  useLayoutEffect(() => {
+    if (morphFrom.current === null) return;
+    morphSidebar(appRef.current, morphFrom.current);
+    morphFrom.current = null;
+  }, [sidebarVariant]);
   const [profile, setProfile] = useState(() => readSaved("sona:profile", { name: "Listener", color: "#b98a99", createdAt: new Date().toISOString() }));
   const [volume, setVolume] = useState(() => {
     const saved = Number(localStorage.getItem("sona:volume") ?? NaN);
@@ -138,6 +187,7 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   const heardVolume = muted ? 0 : volume;
   useEffect(() => { localStorage.setItem("sona:profile", JSON.stringify(profile)); }, [profile]);
   useEffect(() => { localStorage.setItem("sona:sidebarCollapsed", JSON.stringify(sidebarCollapsed)); }, [sidebarCollapsed]);
+  useEffect(() => { localStorage.setItem("sona:sorts", JSON.stringify(sorts)); }, [sorts]);
   useEffect(() => {
     if (!showDrawer) return;
     const onKey = (event) => { if (event.key === "Escape") setDrawerOpen(false); };
@@ -148,11 +198,14 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   useEffect(() => { localStorage.setItem("sona:repeat", JSON.stringify(repeat)); }, [repeat]);
   useEffect(() => {
     if (!playerOpen) return;
-    const onKey = (event) => { if (event.key === "Escape") setPlayerOpen(false); };
+    const onKey = (event) => { if (event.key === "Escape") closePlayerNow(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [playerOpen]);
 
+  const albums = useMemo(() => groupAlbums(tracks), [tracks]);
+  // A saved album page whose album a re-sync removed falls back to the Albums grid.
+  const album = activeView === "Album" ? albums.find((item) => item.id === activeAlbum) : null;
   const trackById = useMemo(() => new Map(tracks.map((item) => [item.id, item])), [tracks]);
   // Drop ids that a library re-sync removed.
   const contextIds = useMemo(() => (context.ids ?? tracks.map((item) => item.id)).filter((id) => trackById.has(id)), [context, tracks, trackById]);
@@ -217,13 +270,13 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   // Saved whenever any of it changes, and again as the page goes away so the
   // exact playback position survives a refresh or closing the tab.
   useEffect(() => {
-    const save = () => localStorage.setItem("sona:session", JSON.stringify({ currentId, position: audioRef.current?.currentTime ?? 0, queue, context, shuffleOrder, activeView, activePlaylist, playerOpen, query }));
+    const save = () => localStorage.setItem("sona:session", JSON.stringify({ currentId, position: audioRef.current?.currentTime ?? 0, queue, context, shuffleOrder, activeView, activePlaylist, activeAlbum, playerOpen, query }));
     const onHide = () => { if (document.visibilityState === "hidden") save(); };
     save();
     window.addEventListener("pagehide", save);
     document.addEventListener("visibilitychange", onHide);
     return () => { window.removeEventListener("pagehide", save); document.removeEventListener("visibilitychange", onHide); };
-  }, [audioRef, currentId, queue, context, shuffleOrder, activeView, activePlaylist, playerOpen, query]);
+  }, [audioRef, currentId, queue, context, shuffleOrder, activeView, activePlaylist, activeAlbum, playerOpen, query]);
   // Picking a song from a list makes that list the play context, so next,
   // previous and shuffle stay inside it (a playlist, search results, …).
   const pickTrack = (id, list, label) => {
@@ -256,6 +309,7 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
   const toggleLike = () => setLikedIds((ids) => ids.includes(currentId) ? ids.filter((id) => id !== currentId) : [...ids, currentId]);
   const addToQueue = (id) => setQueue((items) => [...items, id]);
   const navigate = (view) => { setQuery(""); setActivePlaylist(null); setPlayerOpen(false); setActiveView(view); };
+  const openAlbum = (id) => { setQuery(""); setPlayerOpen(false); setActiveAlbum(id); setActiveView("Album"); };
   const openPlaylist = (id) => { setQuery(""); setPlayerOpen(false); setActivePlaylist(id); setActiveView("Playlist"); };
   const createPlaylist = ({ name, description, trackIds }) => {
     const created = { id: `playlist-${Date.now()}`, name, description, trackIds, createdAt: new Date().toISOString() };
@@ -283,41 +337,51 @@ function MusicPlayer({ tracks, library, syncing, onResync, onSaveFolders, theme,
       const term = query.trim().toLowerCase();
       return tracks.filter((item) => `${item.title} ${item.artist}`.toLowerCase().includes(term));
     }
-    if (activeView === "Collection") return tracks.filter((item) => likedIds.includes(item.id));
+    if (activeView === "Collection") return [...likedIds].reverse().map((id) => trackById.get(id)).filter(Boolean);
     if (activeView === "Recently Played") return recentIds.map((id) => tracks.find((item) => item.id === id)).filter(Boolean);
+    if (activeView === "Album") return album?.tracks ?? [];
     if (activeView === "Playlist") return (customPlaylists.find((list) => list.id === activePlaylist)?.trackIds ?? []).map((id) => tracks.find((item) => item.id === id)).filter(Boolean);
     return tracks;
-  }, [activeView, activePlaylist, customPlaylists, likedIds, query, recentIds, tracks]);
+  }, [activeView, activePlaylist, album, customPlaylists, likedIds, query, recentIds, tracks, trackById]);
+  // Each playlist remembers its own sort; other lists share one per page.
+  const sortView = query.trim() ? "Search" : activeView === "Playlist" ? `Playlist:${activePlaylist}` : activeView === "Album" ? `Album:${activeAlbum}` : activeView;
+  const sortKey = isSortKey(sorts[sortView]) ? sorts[sortView] : "default";
+  // The sorted list is also what plays, so next/previous follow the order you see.
+  const shownTracks = useMemo(() => sortTracks(viewTracks, sortKey), [viewTracks, sortKey]);
+  const sortMenu = viewTracks.length > 1 && <SortMenu value={sortKey} onChange={(key) => setSorts((current) => ({ ...current, [sortView]: key }))} defaultLabel={DEFAULT_SORT_LABELS[sortView.split(":")[0]] ?? "Default"} />;
   const orderAt = order.indexOf(currentId);
   const upcomingIds = orderAt === -1 ? order : [...order.slice(orderAt + 1), ...(repeat === "all" ? order.slice(0, orderAt) : [])];
   const comingUp = upcomingIds.slice(0, 50).map((id) => trackById.get(id)).filter(Boolean);
-  const heading = (eyebrow, title, count) => <header className="view-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1></div>{count !== undefined && <span className="track-count">{count} {count === 1 ? "track" : "tracks"}</span>}</header>;
-  const trackList = (list, label, emptyTitle, emptyText) => list.length ? <div className="library-list">{list.map((item) => <div className={`library-row ${item.id === currentId ? "current" : ""}`} key={item.id}><button className="row-main" onClick={() => pickTrack(item.id, list, label)}><img src={item.cover} alt="" /><span><strong>{item.title}</strong><small>{item.artist}</small></span></button><span className="row-duration">{item.duration}</span>{activeView === "Playlist" && !query.trim() ? <button className="icon-button" aria-label={`Remove ${item.title} from playlist`} onClick={() => removeFromPlaylist(activePlaylist, item.id)}><X size={17} /></button> : <button className="icon-button" aria-label={`Add ${item.title} to queue`} onClick={() => addToQueue(item.id)}><Plus size={18} /></button>}</div>)}</div> : <section className="empty-state"><ListMusic size={32} /><h2>{emptyTitle}</h2><p>{emptyText}</p></section>;
+  const heading = (eyebrow, title, count, extra) => <header className="view-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1></div><div className="heading-side">{count !== undefined && <span className="track-count">{count} {count === 1 ? "track" : "tracks"}</span>}{extra}</div></header>;
+  const trackList = (list, label, emptyTitle, emptyText, { numbered = false } = {}) => list.length ? <div className="library-list">{list.map((item) => <div className={`library-row ${item.id === currentId ? "current" : ""}`} key={item.id}><button className="row-main" onClick={() => pickTrack(item.id, list, label)}>{numbered ? <span className="thumb track-no">{item.id === currentId ? <PlayingBars playing={audio.isPlaying} /> : item.trackNo ?? "–"}</span> : <span className="thumb"><img src={item.cover} alt="" />{item.id === currentId && <PlayingBars playing={audio.isPlaying} />}</span>}<span><strong>{item.title}</strong><small>{item.artist}</small></span></button><span className="row-duration">{item.duration}</span>{activeView === "Playlist" && !query.trim() ? <button className="icon-button" aria-label={`Remove ${item.title} from playlist`} onClick={(event) => removeRow(event.currentTarget.closest(".library-row"), () => removeFromPlaylist(activePlaylist, item.id))}><X size={17} /></button> : <QueueButton title={item.title} onAdd={() => addToQueue(item.id)} icon={Plus} />}</div>)}</div> : <section className="empty-state"><ListMusic size={32} /><h2>{emptyTitle}</h2><p>{emptyText}</p></section>;
 
   const renderView = () => {
-    if (playerOpen) return <NowPlaying track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipForward={skipForward} onSkipBack={skipBack} onToggleShuffle={toggleShuffle} onToggleRepeat={cycleRepeat} shuffle={shuffle} repeat={repeat} queueTracks={queue.map((id, index) => ({ item: tracks.find((song) => song.id === id), index })).filter(({ item }) => item)} comingUp={comingUp} contextLabel={context.label} onPlay={pickTrack} onRemoveFromQueue={(index) => setQueue((items) => items.filter((_, i) => i !== index))} onClose={() => setPlayerOpen(false)} />;
-    if (query.trim()) return <>{heading("SEARCH", `Results for “${query.trim()}”`, viewTracks.length)}{trackList(viewTracks, "Search results", "No matching tracks", "Try another title or artist.")}</>;
-    if (activeView === "Home") return <>{heading(library.tracks.length ? `SONA · ${library.tracks.length} TRACKS${library.added ? ` · ${library.added} NEW` : ""}` : "SONA", `${greeting()}, ${profile.name}`)}{!library.tracks.length && <div className="library-notice"><p>{library.online ? "No music found in your folders, so you're hearing sample tracks." : "The library server isn't running, so you're hearing sample tracks. Start the app with npm run dev."}</p>{library.online && <button onClick={() => navigate("Settings")}>Choose folders</button>}</div>}<RecentlyPlayed title={recentTracks.length ? "Listen again" : "Start listening"} tracks={recentTracks.length ? recentTracks : tracks} onPlay={playFrom(recentTracks.length ? recentTracks : tracks, recentTracks.length ? "Listen again" : "Your library")} /><Trending title="Quick picks" tracks={tracks} onPlay={playFrom(tracks, "Quick picks")} onQueue={addToQueue} /></>;
-    if (activeView === "Browse") return <>{heading("SONA LIBRARY", "Browse", tracks.length)}<Trending title="All tracks" tracks={tracks} onPlay={playFrom(tracks, "Your library")} onQueue={addToQueue} /></>;
-    if (activeView === "Charts") return <>{heading("SONA LIBRARY", "Charts")}<Trending title="Top tracks" tracks={tracks} onPlay={playFrom(tracks, "Charts")} onQueue={addToQueue} ranked /></>;
+    if (player.present) return <NowPlaying ref={playerRef} state={player.state} instant={playerInstant} track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipForward={skipForward} onSkipBack={skipBack} onToggleShuffle={toggleShuffle} onToggleRepeat={cycleRepeat} shuffle={shuffle} repeat={repeat} queueTracks={queue.map((id, index) => ({ item: tracks.find((song) => song.id === id), index })).filter(({ item }) => item)} comingUp={comingUp} contextLabel={context.label} onPlay={pickTrack} onRemoveFromQueue={(index) => setQueue((items) => items.filter((_, i) => i !== index))} onClose={() => setPlayerOpen(false)} />;
+    if (query.trim()) return <>{heading("SEARCH", `Results for “${query.trim()}”`, viewTracks.length, sortMenu)}{trackList(shownTracks, "Search results", "No matching tracks", "Try another title or artist.")}</>;
+    if (activeView === "Home") return <>{heading(library.tracks.length ? `SONA · ${library.tracks.length} TRACKS${library.added ? ` · ${library.added} NEW` : ""}` : "SONA", `${greeting()}, ${profile.name}`)}{!library.tracks.length && <div className="library-notice"><p>{library.online ? "No music found in your folders, so you're hearing sample tracks." : "The library server isn't running, so you're hearing sample tracks. Start the app with npm run dev."}</p>{library.online && <button onClick={() => navigate("Settings")}>Choose folders</button>}</div>}<RecentlyPlayed title={recentTracks.length ? "Listen again" : "Start listening"} tracks={recentTracks.length ? recentTracks : tracks} onPlay={playFrom(recentTracks.length ? recentTracks : tracks, recentTracks.length ? "Listen again" : "Your library")} /><Trending title="Quick picks" tracks={tracks} onPlay={playFrom(tracks, "Quick picks")} onQueue={addToQueue} currentId={currentId} playing={audio.isPlaying} /></>;
+    if (activeView === "Browse") return <>{heading("SONA LIBRARY", "Browse", tracks.length, sortMenu)}<Trending title="All tracks" tracks={shownTracks} onPlay={playFrom(shownTracks, "Your library")} onQueue={addToQueue} currentId={currentId} playing={audio.isPlaying} /></>;
+    if (activeView === "Charts") return <>{heading("SONA LIBRARY", "Charts")}<Trending title="Top tracks" tracks={tracks} onPlay={playFrom(tracks, "Charts")} onQueue={addToQueue} currentId={currentId} playing={audio.isPlaying} ranked /></>;
     if (activeView === "Settings") return <>{heading("SONA", "Settings")}<Settings theme={theme} onThemeChange={onThemeChange} library={library} syncing={syncing} onResync={onResync} onSaveFolders={onSaveFolders} shuffle={shuffle} repeat={repeat} onToggleShuffle={toggleShuffle} onSetRepeat={setRepeat} volume={heardVolume} muted={muted} onToggleMute={toggleMute} onVolumeChange={changeVolume} counts={{ recent: recentIds.length, likes: likedIds.length, playlists: customPlaylists.length }} onClearHistory={() => setRecentIds([])} onClearLikes={() => setLikedIds([])} onClearPlaylists={() => { setCustomPlaylists([]); setActivePlaylist(null); }} /></>;
-    if (activeView === "Collection") return <>{heading("SONA LIBRARY", "Collection")}<section className="shelf"><h3 className="section-heading">Playlists</h3><div className="playlist-grid"><button className="playlist-tile playlist-tile-new" onClick={() => setCreatingPlaylist(true)}><span className="playlist-new-art"><Plus size={36} /></span><strong>New playlist</strong><small>Name it, then pick songs</small></button>{customPlaylists.map((item) => { const count = playlistTracks(item).length; return <button className="playlist-tile" key={item.id} onClick={() => openPlaylist(item.id)}><PlaylistCover tracks={playlistTracks(item)} /><strong>{item.name}</strong><small>{count} {count === 1 ? "track" : "tracks"}</small></button>; })}</div></section><section className="shelf"><h3 className="section-heading">Liked tracks</h3>{trackList(viewTracks, "Liked tracks", "Nothing here yet", "Tap the heart on a playing track to save it here.")}</section></>;
-    if (activeView === "Recently Played") return <>{heading("SONA LIBRARY", "Recently Played", viewTracks.length)}{trackList(viewTracks, "Recently played", "Nothing here yet", "Tracks you play will show up here.")}</>;
+    if (activeView === "Collection") return <>{heading("SONA LIBRARY", "Collection")}<section className="shelf"><h3 className="section-heading">Playlists</h3><div className="playlist-grid"><button className="playlist-tile playlist-tile-new" onClick={() => setCreatingPlaylist(true)}><span className="playlist-new-art"><Plus size={36} /></span><strong>New playlist</strong><small>Name it, then pick songs</small></button>{customPlaylists.map((item) => { const count = playlistTracks(item).length; return <button className="playlist-tile" key={item.id} onClick={() => openPlaylist(item.id)}><PlaylistCover tracks={playlistTracks(item)} /><strong>{item.name}</strong><small>{count} {count === 1 ? "track" : "tracks"}</small></button>; })}</div></section><section className="shelf"><div className="shelf-head"><h3 className="section-heading">Liked tracks</h3>{sortMenu}</div>{trackList(shownTracks, "Liked tracks", "Nothing here yet", "Tap the heart on a playing track to save it here.")}</section></>;
+    if (activeView === "Recently Played") return <>{heading("SONA LIBRARY", "Recently Played", viewTracks.length, sortMenu)}{trackList(shownTracks, "Recently played", "Nothing here yet", "Tracks you play will show up here.")}</>;
+    if (activeView === "Albums" || (activeView === "Album" && !album)) return <>{heading("SONA LIBRARY", "Albums", undefined, <span className="track-count">{albums.length} {albums.length === 1 ? "album" : "albums"}</span>)}<div className="playlist-grid album-grid">{albums.map((item) => <button className="playlist-tile" key={item.id} onClick={() => openAlbum(item.id)}><AlbumCover album={item} /><strong title={item.name}>{item.name}</strong><small><span className="tile-artist">{item.artist}</span><span>{item.tracks.length} {item.tracks.length === 1 ? "track" : "tracks"}</span></small></button>)}</div></>;
+    if (activeView === "Album") return <><button className="back-link" onClick={() => navigate("Albums")}><ChevronLeft size={16} /> Albums</button><header className="playlist-hero"><AlbumCover album={album} className="hero-cover" /><div className="hero-text"><p className="eyebrow">ALBUM</p><h1>{album.name}</h1><p className="track-count">{album.artist} · {album.tracks.length} {album.tracks.length === 1 ? "track" : "tracks"} · {formatLength(album.seconds)}</p><div className="hero-actions"><button className="hero-play" onClick={() => playAll(shownTracks, album.name)}><Play size={18} fill="currentColor" /> Play</button><button className="hero-shuffle" onClick={() => playAll(shownTracks, album.name, true)}><Shuffle size={17} /> Shuffle</button>{sortMenu}</div></div></header>{trackList(shownTracks, album.name, "Nothing here yet", "This album has no songs.", { numbered: album.known })}</>;
     const list = customPlaylists.find((item) => item.id === activePlaylist);
-    return <><header className="playlist-hero"><PlaylistCover tracks={viewTracks} className="hero-cover" /><div className="hero-text"><p className="eyebrow">PLAYLIST</p><h1>{list?.name ?? "Playlist"}</h1>{list?.description && <p className="hero-description">{list.description}</p>}<p className="track-count">{profile.name} · {viewTracks.length} {viewTracks.length === 1 ? "track" : "tracks"}</p><div className="hero-actions"><button className="hero-play" disabled={!viewTracks.length} onClick={() => playAll(viewTracks, list?.name ?? "Playlist")}><Play size={18} fill="currentColor" /> Play</button><button className="hero-shuffle" disabled={!viewTracks.length} onClick={() => playAll(viewTracks, list?.name ?? "Playlist", true)}><Shuffle size={17} /> Shuffle</button></div></div></header>{trackList(viewTracks, list?.name ?? "Playlist", "Nothing here yet", "Add songs to this playlist to see them here.")}<div className="suggestions"><button className="suggestions-toggle" onClick={() => setShowPlaylistSuggestions((value) => !value)}><h2>{showPlaylistSuggestions ? "Choose tracks" : "Add tracks"}</h2><Plus size={18} /></button>{showPlaylistSuggestions && tracks.filter((item) => !list?.trackIds.includes(item.id)).map((item) => <div className="library-row" key={item.id}><span className="row-label"><strong>{item.title}</strong><small>{item.artist}</small></span><button className="icon-button" aria-label={`Add ${item.title} to playlist`} onClick={() => addToPlaylist(activePlaylist, item.id)}><Plus size={18} /></button></div>)}</div></>;
+    return <><header className="playlist-hero"><PlaylistCover tracks={viewTracks} className="hero-cover" /><div className="hero-text"><p className="eyebrow">PLAYLIST</p><h1>{list?.name ?? "Playlist"}</h1>{list?.description && <p className="hero-description">{list.description}</p>}<p className="track-count">{profile.name} · {viewTracks.length} {viewTracks.length === 1 ? "track" : "tracks"}</p><div className="hero-actions"><button className="hero-play" disabled={!viewTracks.length} onClick={() => playAll(shownTracks, list?.name ?? "Playlist")}><Play size={18} fill="currentColor" /> Play</button><button className="hero-shuffle" disabled={!viewTracks.length} onClick={() => playAll(shownTracks, list?.name ?? "Playlist", true)}><Shuffle size={17} /> Shuffle</button>{sortMenu}</div></div></header>{trackList(shownTracks, list?.name ?? "Playlist", "Nothing here yet", "Add songs to this playlist to see them here.")}<div className="suggestions"><button className="suggestions-toggle" onClick={() => setShowPlaylistSuggestions((value) => !value)}><h2>{showPlaylistSuggestions ? "Choose tracks" : "Add tracks"}</h2><Plus size={18} /></button>{showPlaylistSuggestions && tracks.filter((item) => !list?.trackIds.includes(item.id)).map((item) => <div className="library-row" key={item.id}><span className="row-label"><strong>{item.title}</strong><small>{item.artist}</small></span><button className="icon-button" aria-label={`Add ${item.title} to playlist`} onClick={(event) => removeRow(event.currentTarget.closest(".library-row"), () => addToPlaylist(activePlaylist, item.id))}><Plus size={18} /></button></div>)}</div></>;
   };
 
   return (
-    <div className={`app sidebar-is-${sidebarVariant} ${playerOpen ? "player-open" : ""}`}>
-      <Sidebar variant={sidebarVariant} activeView={playerOpen || query.trim() ? null : activeView} activePlaylist={activePlaylist} playlists={customPlaylists} onNavigate={navigate} onOpenPlaylist={openPlaylist} onNewPlaylist={() => setCreatingPlaylist(true)} onToggleMenu={toggleMenu} />
-      {showDrawer && <><button className="drawer-backdrop" aria-label="Close menu" tabIndex={-1} onClick={() => setDrawerOpen(false)} /><Sidebar variant="drawer" activeView={playerOpen || query.trim() ? null : activeView} activePlaylist={activePlaylist} playlists={customPlaylists} onNavigate={(view) => { setDrawerOpen(false); navigate(view); }} onOpenPlaylist={(id) => { setDrawerOpen(false); openPlaylist(id); }} onNewPlaylist={() => { setDrawerOpen(false); setCreatingPlaylist(true); }} onToggleMenu={() => setDrawerOpen(false)} /></>}
+    <div ref={appRef} className={`app sidebar-is-${sidebarVariant} ${playerOpen ? "player-open" : ""} ${arriving ? "arriving" : ""}`}>
+      <Sidebar variant={sidebarVariant} activeView={playerOpen || query.trim() ? null : activeView === "Album" ? "Albums" : activeView} activePlaylist={activePlaylist} playlists={customPlaylists} onNavigate={navigate} onOpenPlaylist={openPlaylist} onNewPlaylist={() => setCreatingPlaylist(true)} onToggleMenu={toggleMenu} />
+      {drawer.present && <><button className="drawer-backdrop" data-state={drawer.state} aria-label="Close menu" tabIndex={-1} onClick={() => setDrawerOpen(false)} /><Sidebar ref={drawerRef} state={drawer.state} variant="drawer" activeView={playerOpen || query.trim() ? null : activeView === "Album" ? "Albums" : activeView} activePlaylist={activePlaylist} playlists={customPlaylists} onNavigate={(view) => { setDrawerOpen(false); navigate(view); }} onOpenPlaylist={(id) => { setDrawerOpen(false); openPlaylist(id); }} onNewPlaylist={() => { setDrawerOpen(false); setCreatingPlaylist(true); }} onToggleMenu={() => setDrawerOpen(false)} /></>}
       <main className="content">
-        <div className="topbar"><button className="topbar-menu" onClick={toggleMenu} aria-label="Open menu" aria-expanded={showDrawer}><Menu size={22} /></button><button className="topbar-logo" onClick={() => navigate("Home")} aria-label="SONA home">SONA</button><label className="search-wrap"><Search size={18} /><input className="search" type="search" placeholder="Search songs or artists" value={query} onChange={(event) => { setQuery(event.target.value); setPlayerOpen(false); }} />{query && <button className="search-clear" aria-label="Clear search" onClick={() => setQuery("")}><X size={16} /></button>}</label><ProfileCard profile={profile} onSave={setProfile} stats={{ tracks: tracks.length, likes: likedIds.length, playlists: customPlaylists.length }} onNavigate={navigate} onSync={library.online ? onResync : null} syncing={syncing} /></div>
+        <div className="topbar"><button className="topbar-menu" onClick={toggleMenu} aria-label="Open menu" aria-expanded={showDrawer}><Menu size={22} /></button><button className="topbar-logo" onClick={() => navigate("Home")} aria-label="SONA home">SONA</button><label className="search-wrap"><Search size={18} /><input className="search" type="search" placeholder="Search songs or artists" value={query} onChange={(event) => { setQuery(event.target.value); if (playerOpen) closePlayerNow(); }} />{query && <button className="search-clear" aria-label="Clear search" onClick={() => setQuery("")}><X size={16} /></button>}</label><ProfileCard profile={profile} onSave={setProfile} stats={{ tracks: tracks.length, likes: likedIds.length, playlists: customPlaylists.length }} onNavigate={navigate} onSync={library.online ? onResync : null} syncing={syncing} /></div>
         <div className="view">{renderView()}</div>
       </main>
-      <PlayerBar track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipBack={skipBack} onSkipForward={skipForward} shuffle={shuffle} repeat={repeat} onToggleShuffle={toggleShuffle} onToggleRepeat={cycleRepeat} volume={heardVolume} muted={muted} onToggleMute={toggleMute} onVolumeChange={changeVolume} expanded={playerOpen} onToggleExpanded={() => setPlayerOpen((value) => !value)} />
+      <PlayerBar track={track} audio={audio} liked={likedIds.includes(currentId)} onLike={toggleLike} onSkipBack={skipBack} onSkipForward={skipForward} shuffle={shuffle} repeat={repeat} onToggleShuffle={toggleShuffle} onToggleRepeat={cycleRepeat} volume={heardVolume} muted={muted} onToggleMute={toggleMute} onVolumeChange={changeVolume} expanded={playerOpen} onToggleExpanded={togglePlayer} />
       <audio ref={audioRef} {...audio.handlers} preload="metadata" />
-      {creatingPlaylist && <PlaylistDialog tracks={tracks} existingNames={customPlaylists.map((item) => item.name)} onCreate={createPlaylist} onClose={() => setCreatingPlaylist(false)} />}
+      <Tooltips />
+      {playlistDialog.present && <PlaylistDialog ref={dialogRef} state={playlistDialog.state} tracks={tracks} existingNames={customPlaylists.map((item) => item.name)} onCreate={createPlaylist} onClose={() => setCreatingPlaylist(false)} />}
     </div>
   );
 }

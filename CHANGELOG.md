@@ -7,6 +7,9 @@ All notable changes to SONA. Format loosely follows Keep a Changelog.
 ### Added
 - Desktop app (Electron): `npm run app` opens SONA in its own window with no server or port. It reads your music folders, tags and album art directly and plays files from disk with full seeking, through a private `sona://app` address. Your library cache and folder choices live in `%APPDATA%\SONA\library`. `npm run dist:win` builds a Windows installer into `release/`
 - Fonts (Fredoka, Cinzel) are bundled with the app instead of loaded from Google Fonts, so it looks right offline
+- Sorting: a "Sort" menu on Browse, search results, Liked tracks, Recently Played and every playlist, with the list's own order plus Title A–Z / Z–A, Artist, Album, Recently added, Shortest and Longest first. Each list (and each playlist) remembers its choice, playback follows the sorted order, and stylised Unicode titles (𝐁𝐨𝐥𝐝 etc.) sort under their plain letters. The library server now sends each track's length in seconds and date added
+- Albums: a new Albums page in the sidebar groups your library by album, with each album's cover, artist and track count. An album page lists its songs in track order with numbers, plus Play, Shuffle and Sort. Songs with no album tag share an "Unknown album" at the end. The library server now reads track number, disc number and album artist (existing tags are re-read once on the next sync)
+- Motion and feel pass: the full player rises from the player bar and sinks back into it (instant when closed with Esc or by typing a search); removing a song from a playlist or the queue fades it out while the rows below glide up; every button and row responds to a press; hover highlights only apply to a mouse, so nothing stays highlighted after a tap on a phone; custom tooltips on the icon rail and player controls (the first waits a moment, neighbours appear instantly); the play/pause icon morphs only on a real swap. Everything respects reduced motion. Details in `DESIGN-ENGINEERING-LOG.md`
 - New browser tab icon: a SONA vinyl record (mauve label, yellow spindle, mauve rim so it shows on light and dark tab bars), replacing the default Vite logo
 - Hamburger menu: on desktop it collapses the sidebar to an icon rail and expands it again (remembered); on tablets and phones it opens a slide-over drawer with the full menu and playlists, which closes on Esc, a tap outside, or picking a page
 - Profile picture: upload a photo from Edit profile (or by clicking the big avatar); it's centre-cropped to a 256px square, shown in the top bar and profile card, and can be changed or removed. Non-image files are rejected with a message
@@ -50,6 +53,10 @@ All notable changes to SONA. Format loosely follows Keep a Changelog.
 - README rewritten for SONA; NOTES.md converted to UTF-8 and TODO list updated
 - Fonts switched to Cinzel (logo) + Fredoka (body)
 - Emoji placeholders replaced with lucide-react icons
+
+### Fixed
+- Playlist page and new-playlist dialog covers no longer stretch to full width (the shared cover style was overriding their sizes)
+- Liked tracks now list most recently liked first
 
 ### Removed
 - Unused mock exports (`currentTrack`, `upNext`, `recentlyPlayed`, `trending`) from `src/data/tracks.js`

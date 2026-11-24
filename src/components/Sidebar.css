@@ -1,20 +1,34 @@
 .sidebar{grid-area:side;background:linear-gradient(180deg,var(--brand-dark),var(--brand-plum));color:#f5efe4;padding:18px 14px 22px;display:flex;flex-direction:column;border-radius:20px;margin:12px 0 12px 12px;min-height:0;overflow-y:auto;scrollbar-width:none}
 .sidebar-head{display:flex;align-items:center;gap:6px}
-.menu-button{width:42px;height:42px;flex-shrink:0;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer;transition:background .15s}.menu-button:hover{background:rgba(255,255,255,.14)}
+.menu-button{width:42px;height:42px;flex-shrink:0;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer;transition:background .15s}@media(hover:hover) and (pointer:fine){.menu-button:hover{background:rgba(255,255,255,.14)}}
 .logo{font-family:'Cinzel',serif;font-size:26px;letter-spacing:5px;font-weight:700;color:inherit;background:none;border:0;text-align:left;cursor:pointer;padding:0 4px;line-height:1.1}.logo span{display:block;font-family:'Fredoka',sans-serif;font-size:9px;letter-spacing:3px;opacity:.72;font-weight:400;margin-top:3px}
 .sidebar nav{margin:20px 0 10px;display:flex;flex-direction:column;gap:2px}
-.nav-item{padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:500;color:inherit;border:0;background:transparent;text-align:left;display:flex;align-items:center;gap:14px;font:inherit}.nav-item:hover{background:rgba(255,255,255,.1)}.nav-item.active{background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.nav-item{padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:500;color:inherit;border:0;background:transparent;text-align:left;display:flex;align-items:center;gap:14px;font:inherit}@media(hover:hover) and (pointer:fine){.nav-item:hover{background:rgba(255,255,255,.1)}}.nav-item.active{background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
 .sidebar-library{border-top:1px solid rgba(255,255,255,.16);padding-top:10px;display:flex;flex-direction:column;min-height:0}
 .section-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.68;margin:8px 8px 8px}
 .new-playlist{color:#3d2c3a;background:var(--accent-yellow);font-weight:600;cursor:pointer;margin:2px 4px 10px;border:0;border-radius:999px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:14px;box-shadow:2px 2px 0 rgba(0,0,0,.18)}
 .playlist-links{list-style:none;display:flex;flex-direction:column;gap:2px}
-.playlist-link{width:100%;display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;font-size:14px;text-align:left;cursor:pointer;opacity:.88}.playlist-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.playlist-link:hover{background:rgba(255,255,255,.1);opacity:1}.playlist-link.active{background:rgba(255,255,255,.16);opacity:1}
+.playlist-link{width:100%;display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;font-size:14px;text-align:left;cursor:pointer;opacity:.88}.playlist-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media(hover:hover) and (pointer:fine){.playlist-link:hover{background:rgba(255,255,255,.1);opacity:1}}.playlist-link.active{background:rgba(255,255,255,.16);opacity:1}
 /* icon rail: collapsed on desktop, the default on tablets (like YouTube Music) */
 .sidebar-rail{padding:14px 6px}.sidebar-rail .sidebar-head{justify-content:center}.sidebar-rail nav{margin-top:14px}.sidebar-rail .nav-item{flex-direction:column;gap:4px;padding:10px 2px;font-size:10px;text-align:center}
 /* bottom tab bar on phones */
 .sidebar-tabs{margin:0;padding:4px 4px calc(4px + env(safe-area-inset-bottom));border-radius:0;overflow:visible}.sidebar-tabs nav{margin:0;flex-direction:row;justify-content:space-around}.sidebar-tabs .nav-item{flex:1;min-width:0;flex-direction:column;gap:3px;padding:6px 0;border-radius:8px;font-size:10px;text-align:center}.sidebar-tabs .nav-item.active{background:transparent;box-shadow:none;color:var(--accent-yellow)}
 /* slide-over menu on tablets and phones */
-.sidebar-drawer{position:fixed;top:0;bottom:0;left:0;z-index:41;width:min(280px,86vw);margin:0;border-radius:0 20px 20px 0;padding-top:max(14px,env(safe-area-inset-top));box-shadow:8px 0 30px rgba(var(--shadow),.3);animation:drawer-in .2s ease-out}
-.drawer-backdrop{position:fixed;inset:0;z-index:40;border:0;background:rgba(var(--shadow),.45);cursor:pointer;animation:fade-in .2s ease-out}
-@keyframes drawer-in{from{transform:translateX(-100%)}}@keyframes fade-in{from{opacity:0}}
-@media(prefers-reduced-motion:reduce){.sidebar-drawer,.drawer-backdrop{animation:none}}
+.sidebar-drawer{position:fixed;top:0;bottom:0;left:0;z-index:41;width:min(280px,86vw);margin:0;border-radius:0 20px 20px 0;padding-top:max(14px,env(safe-area-inset-top));box-shadow:8px 0 30px rgba(var(--shadow),.3);transition:transform .3s var(--ease-drawer)}
+.drawer-backdrop{position:fixed;inset:0;z-index:40;border:0;background:rgba(var(--shadow),.45);cursor:pointer;transition:opacity .3s var(--ease-out)}
+/* Slides in from the left edge and back out the same way (the extra 40px hides the shadow).
+   Transitions, so tapping the menu again mid-slide reverses it instead of restarting. */
+@starting-style{.sidebar-drawer[data-state=open]{transform:translateX(calc(-100% - 40px))}.drawer-backdrop[data-state=open]{opacity:0}}
+.sidebar-drawer[data-state=closed]{transform:translateX(calc(-100% - 40px));transition-duration:.22s}.drawer-backdrop[data-state=closed]{opacity:0;pointer-events:none;transition-duration:.22s}
+@media(prefers-reduced-motion:reduce){
+  .sidebar-drawer{transform:none!important;transition:opacity .2s ease}
+  @starting-style{.sidebar-drawer[data-state=open]{opacity:0}}
+  .sidebar-drawer[data-state=closed]{opacity:0}
+}
+/* Desktop collapse/expand (sidebarMorph.js): while it runs, the gradient moves to a ::before panel
+   that slides with the content edge. The static clip keeps the left corners round; the panel brings the right ones. */
+.sidebar-morphing{position:relative;isolation:isolate;background:none;overflow-x:visible;overflow-y:clip;clip-path:inset(0 -100vw 0 0 round 20px)}
+.sidebar-morphing::before{content:"";position:absolute;top:0;bottom:0;left:0;z-index:-1;width:var(--panel-width);border-radius:20px;background:linear-gradient(180deg,var(--brand-dark),var(--brand-plum));pointer-events:none}
+/* press feedback */
+.menu-button,.nav-item,.playlist-link,.new-playlist{transition:background .15s,transform .16s var(--ease-out)}.menu-button:active,.nav-item:active,.playlist-link:active,.new-playlist:active{transform:scale(.97)}
+.logo{transition:transform .16s var(--ease-out)}.logo:active{transform:scale(.97)}
