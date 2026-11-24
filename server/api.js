@@ -14,6 +14,9 @@ const toClient = (track) => ({
   title: track.title,
   artist: track.artist,
   album: track.album,
+  albumArtist: track.albumArtist ?? "",
+  trackNo: track.trackNo ?? null,
+  discNo: track.discNo ?? null,
   duration: formatDuration(track.duration),
   // Raw numbers for sorting: length in seconds, and when the file was last saved (≈ when you added it).
   seconds: Math.round(track.duration || 0),

@@ -64,16 +64,22 @@ async function readTrack(file, info) {
     title: rest.length ? rest.join(" - ") : name,
     artist: rest.length ? guessArtist : "Unknown artist",
     album: "",
+    albumArtist: "",
+    trackNo: null,
+    discNo: null,
     duration: 0,
     hasCover: false,
   };
   try {
     const { common, format } = await parseFile(file, { skipCovers: false });
-    return { ...base, title: common.title || base.title, artist: common.artist || common.albumartist || base.artist, album: common.album ?? "", duration: format.duration ?? 0, hasCover: Boolean(common.picture?.length) };
+    return { ...base, title: common.title || base.title, artist: common.artist || common.albumartist || base.artist, album: common.album ?? "", albumArtist: common.albumartist ?? "", trackNo: common.track?.no ?? null, discNo: common.disk?.no ?? null, duration: format.duration ?? 0, hasCover: Boolean(common.picture?.length) };
   } catch {
     return base;
   }
 }
+
+// Bump when readTrack starts reading new tags, so cached entries get re-read once.
+const TAGS_VERSION = 2;
 
 let index = null;
 let running = null;
@@ -92,8 +98,11 @@ async function runSync() {
       if (!info) continue;
       const previous = cached.get(file);
       // Unchanged files reuse their cached tags, which keeps re-syncs fast.
-      if (previous && previous.size === info.size && previous.mtimeMs === info.mtimeMs) { found.set(file, previous); continue; }
-      found.set(file, await readTrack(file, info));
+      const unchanged = previous && previous.size === info.size && previous.mtimeMs === info.mtimeMs;
+      if (unchanged && previous.tagsVersion === TAGS_VERSION) { found.set(file, previous); continue; }
+      found.set(file, { ...(await readTrack(file, info)), tagsVersion: TAGS_VERSION });
+      // Re-reading an unchanged file for newly supported tags isn't a change to report.
+      if (unchanged) continue;
       if (previous) updated += 1;
       else added += 1;
     }
