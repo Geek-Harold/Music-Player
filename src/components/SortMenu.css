@@ -1,0 +1,10 @@
+.sort-menu{position:relative;flex-shrink:0}
+.sort-trigger{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border:1px solid rgba(var(--tint),.25);border-radius:999px;background:var(--panel-cream);color:var(--mauve-dark);font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}@media(hover:hover) and (pointer:fine){.sort-trigger:hover{background:rgba(var(--tint),.1)}}.sort-trigger.active{border-color:var(--mauve-dark)}
+.sort-list{position:absolute;top:calc(100% + 6px);right:0;z-index:15;min-width:200px;padding:6px;border-radius:14px;background:var(--panel-cream);box-shadow:4px 4px 0 rgba(var(--shadow),.14),0 14px 34px rgba(var(--shadow),.22);transform-origin:top right;transition:opacity .18s var(--ease-out),transform .18s var(--ease-out)}
+/* Grows out of the chip it hangs from; leaves a little faster than it came. Transitions, so a quick re-open reverses mid-way. */
+@starting-style{.sort-list[data-state=open]{opacity:0;transform:scale(.95)}}
+.sort-list[data-state=closed]{opacity:0;transform:scale(.95);pointer-events:none;transition-duration:.12s}
+@media(prefers-reduced-motion:reduce){.sort-list{transform:none!important}}
+.sort-list button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border:0;border-radius:9px;background:none;color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer}.sort-list button:focus-visible{background:rgba(var(--tint),.12);outline:none}@media(hover:hover) and (pointer:fine){.sort-list button:hover{background:rgba(var(--tint),.12);outline:none}}.sort-list button[aria-checked=true]{font-weight:600;color:var(--mauve-dark)}
+@media(max-width:680px){.sort-list{left:auto;right:0}}
+.sort-list button:active{background:rgba(var(--tint),.18)}
